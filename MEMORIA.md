@@ -4,64 +4,81 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ---
 
-## Iteración actual: Sub 0.1 — Setup inicial
+## Iteración actual: Sub 0.2 — Supabase (conectividad)
 **Fecha**: 2026-04-22
-**Estado**: ✅ Cerrada (pendiente de Mario: cambiar production branch a `DESARROLLO-CLAUDE` en Vercel).
+**Estado**: ✅ Cerrada.
 
 ### Resultado
-🌐 **URL pública**: https://gpto-psi.vercel.app
-🔗 Inspector último deploy: https://vercel.com/vercomi/gpto/8XucoYiYJ3xR3sx7EatzVhRMyVAD
-🔗 Repo: https://github.com/Mario1988123/GPTO
-🔗 Proyecto Vercel: https://vercel.com/vercomi/gpto (scope: `vercomi`)
+🌐 **URL pública**: https://gpto-psi.vercel.app — placeholder OK.
+🩺 **Health check**: https://gpto-psi.vercel.app/health — 5/5 checks en verde.
+🔗 **Proyecto Supabase**: `https://xvjgtaevlhwfxafteuvi.supabase.co` (ref: `xvjgtaevlhwfxafteuvi`).
+🔗 Deploy Sub 0.2: `dpl_Ei21j6qYxpczy7mxiS6td746hfRs` (prod).
 
 ### Completado
-- Proyecto Next.js **16.2.4** + React **19.2.4** + TypeScript + Tailwind **4** (App Router, `src/`).
-- **shadcn/ui v4** inicializado (base-color: zinc, CSS variables). Componente `button` instalado como ejemplo.
-- Estructura creada:
-  - `/src/app`
-  - `/src/components/ui`
-  - `/src/lib`
-  - `/supabase/migrations`
-  - `/docs`
-  - `/public`
-- Documentos raíz: `README.md`, `CLAUDE.md`, `MEMORIA.md`, `NOTAS.md`, `AGENTS.md` (auto).
-- `.gitignore` correcto (node_modules, .next, .env*, .vercel, next-env.d.ts, *.tsbuildinfo).
-- Página raíz `/` con placeholder "GPTO — En construcción" (verificada vía curl: HTTP 200, contiene GPTO / En construcción / Próximamente).
-- Gestor de paquetes: **pnpm 10.33.1**.
-- Repo local: `C:\GPTO` (movido desde OneDrive).
-- Rama local: `DESARROLLO-CLAUDE` (commits: `943dc1a` setup inicial).
-- Rama remote: `DESARROLLO-CLAUDE` en GitHub.
-- **Vercel CLI** instalado local (devDep, `vercel@52`). Proyecto linkeado (`vercomi/gpto`). Primer deploy a producción manual (`vercel --prod`) OK.
-- Repo GitHub conectado al proyecto Vercel (detectado automáticamente por `vercel link`).
+- Instalados `@supabase/supabase-js@2.104.0` y `@supabase/ssr@0.10.2`.
+- Helpers creados:
+  - `src/lib/supabase/client.ts` — `createClient()` browser.
+  - `src/lib/supabase/server.ts` — `createClient()` server con cookies (try/catch para Server Components).
+- `.env.example` con las 3 variables.
+- `.env.local` con las keys reales (gitignored). Excepción en `.gitignore`: `!.env.example`.
+- Ruta `src/app/health/page.tsx` — Server Component dinámico (`force-dynamic`) con 5 checks:
+  1. `NEXT_PUBLIC_SUPABASE_URL` definida.
+  2. `NEXT_PUBLIC_SUPABASE_ANON_KEY` definida.
+  3. `SUPABASE_SERVICE_ROLE_KEY` definida.
+  4. Auth health (`GET /auth/v1/health`) — devuelve GoTrue v2.188.1.
+  5. Cliente SSR (`auth.getSession()`) — respuesta sin sesión OK.
+- Env vars configuradas en Vercel:
+  - **Production**: 3/3 (URL, ANON, SERVICE).
+  - **Development**: 3/3.
+  - **Preview** (branch `main` explícita): 3/3.
+- Redeploy a producción OK con las nuevas env vars. 5/5 checks en verde en `gpto-psi.vercel.app/health`.
 
-### Dependencias runtime
-`next@16.2.4`, `react@19.2.4`, `react-dom@19.2.4`, `@base-ui/react`, `class-variance-authority`, `clsx`, `lucide-react`, `tailwind-merge`, `tw-animate-css`.
+### Decisiones técnicas tomadas en Sub 0.2
+- Health check usa `fetch` directo a `/auth/v1/health` (endpoint oficial público) + `supabase.auth.getSession()`. Evita `auth.getUser()` que tira `Auth session missing!` en versiones recientes de `@supabase/ssr`.
+- Supabase presenta **dos formatos de keys**: nuevo `sb_publishable_...` / `sb_secret_...` y legacy JWT `eyJ...`. Usamos las JWT (funcionalmente equivalentes y estándar con `@supabase/ssr`).
+- CLI de Vercel v52: para `env add preview` se requiere pasar git-branch explícita (`preview main`) con `--value --yes`. Omitir la branch falla aunque los ejemplos sugieran que debería funcionar.
+- `SUPABASE_SERVICE_ROLE_KEY` autorizada expresamente por Mario para subir a Vercel (credencial de alto impacto, pide confirmación específica).
+- Connection string Postgres guardada en NOTAS.md para usar en Capa 2-3 (migrations con Supabase CLI).
 
-### Dependencias dev
-`@tailwindcss/postcss@4`, `@types/node`, `@types/react`, `@types/react-dom`, `eslint@9`, `eslint-config-next@16.2.4`, `tailwindcss@4`, `typescript@5`, `vercel@52`.
-
-### Decisiones técnicas tomadas en Sub 0.1
-- `pnpm` instalado vía `npm i -g pnpm` (corepack no venía en el Node 25 de Mario).
-- `shadcn init` con defaults: style `new-york`, base-color `zinc`, CSS variables `sí`.
-- Identity git pre-existente de Mario: `Mario1988123` / `mario.ortigueira@me.com`. Los commits saldrán con `@me.com` (no `@gmail.com`).
-- `gh` CLI no instalado → Mario creó el repo en github.com manualmente.
-- `main` remote tiene un "Initial commit" con README auto-generado (no tocado). `DESARROLLO-CLAUDE` es la rama con todo el setup. El primer merge formal a `main` se hará en el futuro vía PR.
-- Primer deploy vía `vercel --prod` desde local; repo conectado para deploys automáticos futuros.
-
-### Pendiente de Mario (1 único paso manual)
-- [ ] Cambiar **Production Branch** de `main` a `DESARROLLO-CLAUDE` en Vercel → [vercel.com/vercomi/gpto/settings/git](https://vercel.com/vercomi/gpto/settings/git). Si no se cambia, un push a `main` desplegará en producción el README genérico; con DESARROLLO-CLAUDE como production branch, cada push automático a esa rama desplegará correctamente.
+### Pendiente
+_(nada para cerrar Sub 0.2)_
 
 ---
 
-## Siguiente iteración: Sub 0.2 — Supabase
-- Mario: crear proyecto Supabase nuevo (NO el de TURIVAL) en dashboard.supabase.com.
-- Mario: pasar `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
-- Claude: instalar `@supabase/ssr` y `@supabase/supabase-js`.
-- Claude: helpers cliente (`createBrowserClient`) y servidor (`createServerClient`) en `src/lib/supabase/`.
-- Claude: health check visible en `/` (o en una ruta `/health`).
-- Claude: configurar variables de entorno en Vercel vía CLI (`vercel env add`).
+## Siguiente iteración: Sub 0.3 — Schema empresa/usuario
+Objetivo: primeras tablas del modelo multitenant.
+
+- Tablas mínimas de Capa 0:
+  - `empresas` (id, nombre, slug, config_empresa JSONB, created_at)
+  - `usuarios` (id → auth.users, empresa_id → empresas, rol: admin/operario/cliente_final, nombre, activo, created_at)
+- RLS activada en ambas desde día 1.
+- Funciones helper para RLS: `current_empresa_id()` basada en JWT del usuario.
+- Trigger: al crear usuario en `auth.users`, insertar fila correspondiente en `usuarios` (necesita decisión: ¿invitación manual o trigger automático?).
+- SQL numerado: `001_extensiones.sql`, `002_empresas.sql`, `003_usuarios.sql`, `004_rls.sql`.
+- Al final de 0.3: Mario existirá como primera empresa y primer admin en la BD.
+
+---
+
+## Siguiente-siguiente: Sub 0.4 — Login + guards
+- Login con Supabase Auth (email/password).
+- Middleware Next.js 16 para refrescar sesión en todas las rutas.
+- Route guards: `/app/*` requiere auth. `/` público (placeholder).
+- Layout `/app` con user dropdown y logout.
+- Página `/health` pasará a requerir admin (o se eliminará).
+
+---
+
+## Sub 0.1 — Setup inicial (cerrada 2026-04-22)
+- Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4 (zinc).
+- pnpm 10.33.1. Repo local `C:\GPTO`. Rama `DESARROLLO-CLAUDE`.
+- Estructura: `src/app`, `src/components/ui`, `src/lib`, `supabase/migrations`, `docs`, `public`.
+- Docs raíz: README, CLAUDE, MEMORIA, NOTAS, AGENTS.
+- Placeholder `/` "GPTO — En construcción".
+- GitHub: `Mario1988123/GPTO`. Vercel: `vercomi/gpto` → `https://gpto-psi.vercel.app`.
+- Commits: `943dc1a` setup, `b327edf` cierre con Vercel.
 
 ---
 
 ## Histórico por iteraciones
-_(se rellena a medida que cerramos iteraciones)_
+- **Sub 0.1** (2026-04-22): setup técnico base + deploy Vercel.
+- **Sub 0.2** (2026-04-22): integración Supabase + health check.
