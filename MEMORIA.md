@@ -6,6 +6,36 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 7.1 — Presupuestos (borrador + emitir + líneas editables) · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+🌐 `/app/presupuestos` listado; `/app/presupuestos/[id]` detalle con líneas inline editables, totales (subtotal/desc/base/IVA/total), metadatos (validez, modo, descuento global, IVA, notas), botones "Regenerar desde proyecto", "Emitir" y transiciones aceptado/rechazado/caducado.
+
+🔢 Número automático `PRES-2026-0001` vía función SQL `get_next_sequence(tipo)` con UPSERT en tabla `secuencias (empresa_id, tipo, anio)`. Soporte también para PED/ALB/PIE/LOT.
+
+**Migraciones aplicadas**
+- `020_presupuestos.sql`: `secuencias`, `presupuestos`, `presupuestos_lineas`, función `get_next_sequence` en SQL puro con UPSERT + RETURNING formateado.
+- `021_presupuestos_rls.sql`: RLS. Secuencias solo lectura (modificadas vía función SECURITY DEFINER). Presupuestos y líneas admin+operario.
+
+**Decisiones aplicadas**
+- **Congelar al emitir**: snapshot JSONB captura proyecto + cliente + líneas en el momento. Post-emisión no se puede editar líneas; solo cambiar estado.
+- **Número asignado en emisión** (NULL en borrador). Fecha emisión = hoy.
+- **Descuento por línea + global** combinables.
+- **IVA 21%** default, editable por presupuesto.
+- **Mano de obra**: `precio_hora_mano_obra_eur` en `empresas.config_empresa` (default 25). Se multiplica por horas × `particiones_verticales`.
+
+**Cálculo automático** (línea por categoría):
+- Tableros: por referencia, `N × área_útil_m² @ precio_m²`.
+- Cantos: longitud según `lados_con_canto` × cantidad piezas, sumada por `canto_id`, `@ precio_ml`.
+- Herrajes: `cantidad_herraje × módulos × particiones_verticales @ precio_unidad`, sumado por herraje.
+- Mano de obra: `Σ horas_tipo_modulo × particiones` `@ precio_hora`.
+
+**Pendiente**
+- Capa 7.2: PDF descargable con `@react-pdf/renderer` (plantilla fija con logo empresa).
+
+---
+
 ### Capa 6.3 — Particiones verticales (apilar módulos) · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -225,8 +255,9 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 5** (2026-04-23): explosión de piezas + función regenerar + /t/[qr] pública. ✅
 - **Capa 6.1** (2026-04-23): nesting automático MaxRects + almacén de recortes con validación. ✅
 - **Capa 6.3** (2026-04-23): particiones verticales de módulos (apilar módulos grandes). ✅
+- **Capa 7.1** (2026-04-23): presupuestos con líneas editables + emisión con snapshot + numeración automática. ✅
+- **Capa 7.2** (siguiente) — PDF descargable con plantilla.
 - **Capa 6.2** (opcional) — drag&drop manual sobre el plano de corte.
 - **Capa 6.5** (opcional) — asistente determinista de optimización dimensiones.
-- **Capa 7** (siguiente) — presupuestos con IVA + PDF + herraje unión módulos apilados.
 - **Capa 4.2** (paralelo opcional) — render 3D con Three.js + R3F.
 - **Mini 5.1** (opcional) — PDF etiquetas QR.
