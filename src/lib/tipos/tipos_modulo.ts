@@ -24,6 +24,31 @@ export const LADOS_CANTO: { value: LadosCanto; label: string }[] = [
   { value: "4", label: "4 lados" },
 ];
 
+export type CategoriaModulo =
+  | "cajonera"
+  | "colgador_corto"
+  | "colgador_largo"
+  | "zapatero"
+  | "estanteria"
+  | "baldas"
+  | "espejo"
+  | "complemento"
+  | "puerta"
+  | "otro";
+
+export const CATEGORIAS_MODULO: { value: CategoriaModulo; label: string; emoji: string }[] = [
+  { value: "cajonera",       label: "Cajonera",             emoji: "🗄️" },
+  { value: "colgador_corto", label: "Colgador corto",       emoji: "👕" },
+  { value: "colgador_largo", label: "Colgador largo",       emoji: "🧥" },
+  { value: "zapatero",       label: "Zapatero",             emoji: "👟" },
+  { value: "estanteria",     label: "Estantería / Baldas",  emoji: "📚" },
+  { value: "baldas",         label: "Baldas extra",         emoji: "📏" },
+  { value: "espejo",         label: "Espejo",               emoji: "🪞" },
+  { value: "complemento",    label: "Complemento",          emoji: "🧺" },
+  { value: "puerta",         label: "Puerta",               emoji: "🚪" },
+  { value: "otro",           label: "Otro",                 emoji: "📦" },
+];
+
 export type TipoModulo = {
   id: string;
   empresa_id: string;
@@ -34,6 +59,8 @@ export type TipoModulo = {
   fondo_default_mm: number;
   referencia_tablero_default_id: string | null;
   horas_fabricacion_default: number;
+  categoria: CategoriaModulo;
+  es_estandar: boolean;
   activo: boolean;
   created_at: string;
   updated_at: string;

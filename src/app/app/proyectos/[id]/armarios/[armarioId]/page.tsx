@@ -12,10 +12,13 @@ import {
 import { ToastFromSearchParams } from "../../../../catalogo/shared";
 import { AnadirModuloForm } from "./anadir-modulo";
 import { Armario3D } from "./armario-3d";
+import { ProponerDisenoForm } from "./proponer-diseno";
 import { cambiarEstadoPieza, regenerarPiezasArmario } from "../../../piezas-actions";
 import { actualizarDatosInstalacion } from "../../../estancias-actions";
+import { aplicarDisenoPropuesto } from "../../../diseno-actions";
 import { TIPOS_INSTALACION } from "@/lib/tipos/estancias";
 import type { Armario, ModuloArmario, Proyecto } from "@/lib/tipos/proyectos";
+import type { CategoriaModulo } from "@/lib/tipos/tipos_modulo";
 import { ESTADOS_PIEZA, type EstadoPieza, type PiezaModulo } from "@/lib/tipos/piezas";
 
 export const dynamic = "force-dynamic";
@@ -53,8 +56,9 @@ export default async function ConfiguradorArmarioPage({
       .order("orden")
       .returns<ModuloVista[]>(),
     s.from("tipos_modulo")
-      .select("id, nombre, ancho_default_mm, alto_default_mm, fondo_default_mm")
+      .select("id, nombre, ancho_default_mm, alto_default_mm, fondo_default_mm, categoria, es_estandar")
       .eq("activo", true)
+      .order("categoria")
       .order("nombre"),
     s.from("referencias_tablero")
       .select("id, grosor_mm, materiales(nombre), acabados(nombre)")
@@ -105,6 +109,33 @@ export default async function ConfiguradorArmarioPage({
           {armario.tipo_instalacion === "empotrado" ? `Empotrado · tapeta ${armario.margen_tapeta_mm}mm` : "Suelto"}
         </span>
       </p>
+
+      {/* Proponer diseño (tipos estándar) */}
+      <section className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/30 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">✨ Auto-diseño</h3>
+            <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
+              Selecciona cuántos módulos estándar quieres (cajonera, colgador, zapatero…) y GPTO los encaja automáticamente en el hueco.
+            </p>
+          </div>
+          <ProponerDisenoForm
+            ancho_armario_mm={armario.ancho_total_mm - (armario.tipo_instalacion === "empotrado" ? 2 * armario.margen_tapeta_mm : 0)}
+            tipos={(tipos ?? []).filter((t) => (t as { es_estandar?: boolean }).es_estandar).map((t) => ({
+              id: (t as { id: string }).id,
+              nombre: (t as { nombre: string }).nombre,
+              categoria: ((t as { categoria?: CategoriaModulo }).categoria ?? "otro") as CategoriaModulo,
+              ancho_default_mm: (t as { ancho_default_mm: number }).ancho_default_mm,
+              alto_default_mm: (t as { alto_default_mm: number }).alto_default_mm,
+              fondo_default_mm: (t as { fondo_default_mm: number }).fondo_default_mm,
+            }))}
+            action={async (pl) => {
+              "use server";
+              await aplicarDisenoPropuesto(proyectoId, armarioId, pl);
+            }}
+          />
+        </div>
+      </section>
 
       {/* Vista 3D */}
       <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
