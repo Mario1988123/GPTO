@@ -6,6 +6,38 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 4.5 — Módulos estándar + Auto-layout "Proponer diseño" · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+- 🌐 Botón verde **"✨ Proponer diseño"** en cada armario (`/app/proyectos/[id]/armarios/[armarioId]`).
+- Modal con tipos agrupados por categoría (cajonera, colgador corto/largo, zapatero, estantería, hueco libre...) y stepper +/- por cada tipo.
+- Barra de progreso en vivo (verde/roja) con ancho propuesto vs libre vs exceso respecto al hueco interior del armario.
+- Al aplicar: borra módulos existentes y genera los nuevos con auto-cálculo de `particiones_verticales` según tablero útil.
+
+**Migración**
+- `029_tipos_modulo_categoria.sql` — ALTER añade `categoria` (enum 10 valores) + `es_estandar` boolean + índice.
+
+**Seed**
+- `scripts/seed-tipos-estandar.mjs` (+ `pnpm seed-tipos-estandar`) — inserta 7 tipos estándar para MAZOR:
+  - Cajonera 3 cajones (600×700×500)
+  - Cajonera 4 cajones (600×1000×500)
+  - Colgador corto camisas/pantalones (600×900×550)
+  - Colgador largo trajes (600×1800×550)
+  - Zapatero con 4 baldas (600×1200×400)
+  - Estantería 5 baldas (600×2000×400)
+  - Hueco libre (900×2000×600)
+- Idempotente: borra `es_estandar=true` previos antes.
+
+**Algoritmo auto-layout** (`aplicarDisenoPropuesto` en `diseno-actions.ts`)
+- Calcula `ancho_interior = ancho_armario − 2×margen_tapeta` si empotrado.
+- Expande items según cantidades, coloca secuencialmente sin sobrepasar.
+- Alto y fondo heredados del armario (interior si empotrado).
+- `particiones_verticales` = `ceil(alto_interior / tablero_util_alto_mm)`.
+- Borra módulos existentes y genera nuevos.
+
+---
+
 ### Capa 4.2 + 4.3 — Vista 3D + Estancias · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -425,9 +457,9 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - 🎉 **HOJA DE RUTA ORIGINAL COMPLETA** (Capas 0-12) 🎉
 - **Capa 4.2** (2026-04-23): vista 3D real con Three.js + R3F. ✅
 - **Capa 4.3** (2026-04-23): estancias como nivel entre proyecto y armarios + tipo_instalacion + margen_tapeta. ✅
+- **Capa 4.5** (2026-04-23): tipos estándar + botón "Proponer diseño" con auto-layout. ✅
 - **Próximas iteraciones** (orden recomendado):
   - **Capa 4.4** — drag&drop 3D interactivo (mover módulos con el ratón en el canvas).
-  - **Capa 4.5** — módulos estándar proveedor + auto-layout "proponer diseño".
   - **Capa 4.6** — plano 2D en planta de la estancia con armarios como rectángulos.
   - **Capa 13** — rediseño UI v2 (deuda registrada en memoria persistente).
 - **Iteraciones opcionales pendientes**:
