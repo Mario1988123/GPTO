@@ -76,6 +76,14 @@ export default async function DetallePresupuestoPage({ params }: { params: Promi
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <a
+            href={`/api/presupuestos/${id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium dark:border-zinc-700 dark:bg-zinc-950"
+          >
+            Descargar PDF
+          </a>
           {editable ? (
             <>
               <form action={regen}><button type="submit" className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium dark:border-zinc-700 dark:bg-zinc-950">Regenerar desde proyecto</button></form>
