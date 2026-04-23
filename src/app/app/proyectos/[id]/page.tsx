@@ -60,6 +60,22 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
         </div>
       </div>
 
+      {/* Portal cliente (Capa 12) */}
+      <section className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
+        <div className="flex items-start gap-3">
+          <span className="text-lg">🔗</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-emerald-900 dark:text-emerald-200">Portal cliente</p>
+            <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
+              Enlace privado para que el cliente vea el estado de su proyecto:
+            </p>
+            <code className="mt-2 block truncate rounded bg-white px-2 py-1 font-mono text-xs text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+              /c/{proyecto.acceso_token}
+            </code>
+          </div>
+        </div>
+      </section>
+
       <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="mb-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">Datos</h2>
         <ProyectoForm proyecto={proyecto} clientes={clientes ?? []} action={update} submitLabel="Guardar cambios" />

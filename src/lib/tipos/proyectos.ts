@@ -22,6 +22,7 @@ export type Proyecto = {
   nombre: string;
   estado: EstadoProyecto;
   notas: string | null;
+  acceso_token: string;
   created_at: string;
   updated_at: string;
 };
