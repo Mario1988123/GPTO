@@ -39,9 +39,17 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
 
       <div className="mt-2 flex items-baseline justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">{proyecto.nombre}</h1>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${LBL[proyecto.estado]?.color ?? ""}`}>
-          {LBL[proyecto.estado]?.label}
-        </span>
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/app/proyectos/${id}/nesting`}
+            className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900"
+          >
+            Nesting →
+          </Link>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${LBL[proyecto.estado]?.color ?? ""}`}>
+            {LBL[proyecto.estado]?.label}
+          </span>
+        </div>
       </div>
 
       <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
