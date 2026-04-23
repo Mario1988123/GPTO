@@ -45,6 +45,10 @@ export async function actualizarAjustesEmpresa(empresaId: string, fd: FormData) 
   maybeNum("trasera_grosor_mm", 10);
   maybeNum("fondo_armario_cm", 61);
 
+  // Herraje de unión módulos apilados (Capa 7.3)
+  maybeStr("herraje_union_default_id"); // UUID del herraje a usar en uniones
+  maybeNum("herrajes_por_union", 4);    // cantidad por cada junta
+
   const { error } = await s.from("empresas").update({ nombre, config_empresa }).eq("id", empresaId);
   if (error) redirect(`/app/ajustes?error=${encodeURIComponent(error.message)}`);
 

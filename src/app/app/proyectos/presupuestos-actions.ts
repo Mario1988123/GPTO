@@ -146,6 +146,24 @@ async function calcularLineas(proyectoId: string): Promise<LineaNueva[]> {
     });
   }
 
+  // ---------- 3.b HERRAJE UNION MODULOS APILADOS (Capa 7.3) ----------
+  const uniones = mods.reduce((acc, m) => acc + Math.max(0, m.particiones_verticales - 1), 0);
+  const herrajeUnionId = emp?.config_empresa?.herraje_union_default_id as unknown as string | undefined;
+  const herrajesPorUnion = Number(emp?.config_empresa?.herrajes_por_union ?? 4);
+  if (uniones > 0 && herrajeUnionId) {
+    const { data: hu } = await s.from("herrajes").select("nombre, precio_unidad").eq("id", herrajeUnionId).maybeSingle();
+    if (hu) {
+      lineas.push({
+        orden: orden++,
+        categoria: "herrajes",
+        descripcion: `${hu.nombre} (unión módulos apilados)`,
+        cantidad: uniones * herrajesPorUnion,
+        unidad: "ud",
+        precio_unitario_eur: Number(hu.precio_unidad),
+      });
+    }
+  }
+
   // ---------- 4. MANO DE OBRA ----------
   const { data: modsMO } = await s
     .from("modulos_armario")

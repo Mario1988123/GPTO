@@ -51,6 +51,25 @@ export default async function AjustesPage() {
           <Field name="fondo_armario_cm" label="Fondo armario por defecto (cm)" type="number" defaultValue={cfg.fondo_armario_cm as number | undefined} placeholder="61" />
         </Section>
 
+        {/* Módulos apilados */}
+        <Section title="Módulos apilados" desc="Herraje que se añade automáticamente al presupuesto cuando un módulo se fabrica en varias partes apiladas (ej. por exceder el tablero útil).">
+          <Field
+            name="herraje_union_default_id"
+            label="ID herraje de unión"
+            defaultValue={cfg.herraje_union_default_id as string | undefined}
+            placeholder="UUID del herraje (ver Catálogo → Herrajes)"
+            className="sm:col-span-2"
+          />
+          <Field
+            name="herrajes_por_union"
+            label="Unidades por junta"
+            type="number"
+            step="1"
+            defaultValue={cfg.herrajes_por_union as number | undefined}
+            placeholder="4"
+          />
+        </Section>
+
         <div className="flex items-center gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
           <button type="submit" className="rounded-md bg-zinc-900 px-5 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
             Guardar ajustes
