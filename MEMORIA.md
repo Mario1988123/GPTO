@@ -6,6 +6,33 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 6.3 — Particiones verticales (apilar módulos) · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+- Campo nuevo `modulos_armario.particiones_verticales` (INTEGER, default 1, CHECK 1-10).
+- La función `regenerar_piezas_modulo` divide `alto_mm` entre particiones y multiplica `cantidad` por particiones.
+- UI: input "Particiones ↕" en form del módulo + auto-sugerencia `ceil(alto / tablero_util_alto)` al cambiar tipo/alto.
+- Visualización: líneas horizontales punteadas en el preview frontal del armario por cada partición; columna "Part." en tabla de módulos.
+- Verificado en BD: módulo 600×2500×600 con particiones=2 genera piezas con alto efectivo 1250 mm y cantidades x2 (Lateral ×4, Suelo ×2, Techo ×2, Trasera ×2, Frontal ×2).
+
+**Migración**
+- `019_particiones_verticales.sql` — ALTER TABLE + REPLACE FUNCTION.
+
+**Semántica**
+Un módulo con `particiones_verticales = 2` se fabrica como **2 módulos físicos apilados verticalmente**, cada uno con `alto = alto_mm / 2`. Las piezas se calculan usando ese alto efectivo y se duplica la cantidad. Coincide con la respuesta de Mario: *"si mide 3m → 2 de 1,5m"*.
+
+**Limitación identificada**
+Con alto=2500 y particiones=2, el alto efectivo es 1250 mm y las piezas interiores (trasera 568×1218, frontal 568×1250) siguen excediendo el tablero útil de 1200 mm por ~18-50 mm. Solución: usar particiones=3 (alto efectivo 833 mm) o ajustar alto del armario a 2400 mm (múltiplo que da 1200 exacto).
+
+**Decisiones de Mario aplicadas**
+1. ✅ Partir MÓDULO entero (no pieza individual).
+2. Herraje de unión entre módulos apilados → **aparcado** hasta Capa 7 presupuestos (añadir `config_empresa.herraje_union_default_id`).
+3. Punto de corte al medio por defecto. Optimización "coincidir con balda" queda para Capa 6.5 (asistente determinista).
+4. ✅ Avisar al cliente en presupuesto: línea "Fabricado en N partes apilables" — a implementar en Capa 7.
+
+---
+
 ### Capa 6.1 — Nesting automático + Almacén de recortes · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -197,7 +224,9 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 4.1** (2026-04-23): proyectos + armarios + configurador 2D. ✅
 - **Capa 5** (2026-04-23): explosión de piezas + función regenerar + /t/[qr] pública. ✅
 - **Capa 6.1** (2026-04-23): nesting automático MaxRects + almacén de recortes con validación. ✅
+- **Capa 6.3** (2026-04-23): particiones verticales de módulos (apilar módulos grandes). ✅
 - **Capa 6.2** (opcional) — drag&drop manual sobre el plano de corte.
-- **Capa 7** (siguiente) — presupuestos con IVA + PDF.
+- **Capa 6.5** (opcional) — asistente determinista de optimización dimensiones.
+- **Capa 7** (siguiente) — presupuestos con IVA + PDF + herraje unión módulos apilados.
 - **Capa 4.2** (paralelo opcional) — render 3D con Three.js + R3F.
 - **Mini 5.1** (opcional) — PDF etiquetas QR.
