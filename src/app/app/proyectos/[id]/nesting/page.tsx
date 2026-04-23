@@ -63,7 +63,13 @@ export default async function NestingPage({ params }: { params: Promise<{ id: st
   const { data: proyecto } = await s.from("proyectos").select("*").eq("id", id).maybeSingle<Proyecto>();
   if (!proyecto) notFound();
 
-  const [{ data: tableros }, { data: recortes }] = await Promise.all([
+  // config_empresa para detectar piezas imposibles
+  const { data: emp } = await s.from("empresas").select("config_empresa").limit(1).maybeSingle<{ config_empresa: Record<string, number> }>();
+  const cfg = emp?.config_empresa ?? {};
+  const tablUtilLargo = Number(cfg.tablero_util_ancho_cm ?? 240) * 10;
+  const tablUtilAncho = Number(cfg.tablero_util_alto_cm ?? 120) * 10;
+
+  const [{ data: tableros }, { data: recortes }, { data: todasPiezas }] = await Promise.all([
     s.from("tableros_corte")
       .select("id, numero, ancho_mm, alto_mm, area_ocupada_mm2, referencias_tablero(grosor_mm, materiales(nombre), acabados(nombre)), piezas_en_tablero(id, x_mm, y_mm, largo_mm, ancho_mm, rotada, ocurrencia, piezas_modulo(nombre, qr_code))")
       .eq("proyecto_id", id)
@@ -74,7 +80,30 @@ export default async function NestingPage({ params }: { params: Promise<{ id: st
         ? ((await s.from("tableros_corte").select("id").eq("proyecto_id", id)).data ?? []).map((t) => t.id as string)
         : ["00000000-0000-0000-0000-000000000000"])
       .order("created_at"),
+    s.from("piezas_modulo")
+      .select("id, nombre, cantidad, largo_mm, ancho_mm, respeta_veta, referencia_tablero_id, modulos_armario!inner(armarios!inner(proyecto_id, nombre))")
+      .eq("modulos_armario.armarios.proyecto_id", id),
   ]);
+
+  // Detectar piezas del proyecto que NO tienen fila en piezas_en_tablero (no se colocaron).
+  const tablerosIds = ((await s.from("tableros_corte").select("id").eq("proyecto_id", id)).data ?? []).map((t) => t.id as string);
+  const { data: piezasColocadas } = tablerosIds.length > 0
+    ? await s.from("piezas_en_tablero").select("pieza_modulo_id").in("tablero_corte_id", tablerosIds)
+    : { data: [] as { pieza_modulo_id: string }[] };
+  const colocadasSet = new Set((piezasColocadas ?? []).map((p) => p.pieza_modulo_id));
+
+  type PiezaRaw = { id: string; nombre: string; cantidad: number; largo_mm: number; ancho_mm: number; respeta_veta: boolean; referencia_tablero_id: string | null };
+  const piezasNoColocadas = (todasPiezas as unknown as PiezaRaw[] ?? []).filter((p) => !colocadasSet.has(p.id));
+
+  // Clasificar por motivo
+  const tooBig = piezasNoColocadas.filter((p) => {
+    const L = p.largo_mm, A = p.ancho_mm;
+    const cabeSinRotar = L <= tablUtilLargo && A <= tablUtilAncho;
+    const cabeRotado = !p.respeta_veta && L <= tablUtilAncho && A <= tablUtilLargo;
+    return !cabeSinRotar && !cabeRotado;
+  });
+  const sinReferencia = piezasNoColocadas.filter((p) => !p.referencia_tablero_id);
+  const otras = piezasNoColocadas.filter((p) => !tooBig.includes(p) && !sinReferencia.includes(p));
 
   const run = async () => { "use server"; await ejecutarNesting(id); };
 
@@ -112,6 +141,67 @@ export default async function NestingPage({ params }: { params: Promise<{ id: st
           </button>
         </form>
       </div>
+
+      {/* Alerta de piezas no colocadas */}
+      {totalTableros > 0 && piezasNoColocadas.length > 0 ? (
+        <section className="mt-6 rounded-xl border border-amber-300 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/40">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 text-amber-600 dark:text-amber-400">⚠</span>
+            <div className="flex-1">
+              <h2 className="text-base font-medium text-amber-900 dark:text-amber-200">
+                {piezasNoColocadas.length} pieza(s) no colocada(s) en el plano de corte
+              </h2>
+              {tooBig.length > 0 ? (
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                    🚫 Más grandes que el tablero útil ({tablUtilLargo}×{tablUtilAncho} mm):
+                  </p>
+                  <ul className="mt-1 space-y-0.5 text-sm text-amber-800 dark:text-amber-300">
+                    {tooBig.map((p) => (
+                      <li key={p.id} className="font-mono text-xs">
+                        · {p.nombre} — {p.largo_mm}×{p.ancho_mm} mm {p.respeta_veta ? "(respeta veta, no rotable)" : ""}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 rounded-md bg-white/60 p-3 text-xs text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
+                    <strong>Cómo resolverlo:</strong>
+                    <ul className="mt-1 list-disc pl-5 space-y-1">
+                      <li>Reducir el alto/ancho del armario para que la pieza quepa.</li>
+                      <li>Crear una referencia de tablero más grande (ej: <em>altura cocina</em> 2750×1220) y asignarla al módulo o tipo.</li>
+                      <li>
+                        <span className="text-amber-700 dark:text-amber-300">Partir la pieza</span> en varias unibles con herraje de tarima/conector — <em>funcionalidad en hoja de ruta Capa 6.3</em>.
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              ) : null}
+              {sinReferencia.length > 0 ? (
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                    Sin referencia de tablero asignada:
+                  </p>
+                  <ul className="mt-1 space-y-0.5 text-sm text-amber-800 dark:text-amber-300">
+                    {sinReferencia.map((p) => (
+                      <li key={p.id} className="font-mono text-xs">· {p.nombre} — {p.largo_mm}×{p.ancho_mm} mm</li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs text-amber-900 dark:text-amber-200">
+                    Asegúrate de que el tipo_modulo tiene <strong>referencia_tablero_default_id</strong> o el módulo concreto la tiene en override.
+                  </p>
+                </div>
+              ) : null}
+              {otras.length > 0 ? (
+                <div className="mt-3">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">Otras piezas sin colocar:</p>
+                  <ul className="mt-1 space-y-0.5 text-sm text-amber-800 dark:text-amber-300">
+                    {otras.map((p) => <li key={p.id} className="font-mono text-xs">· {p.nombre} — {p.largo_mm}×{p.ancho_mm} mm</li>)}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* SVGs por tablero */}
       <section className="mt-8 space-y-6">
