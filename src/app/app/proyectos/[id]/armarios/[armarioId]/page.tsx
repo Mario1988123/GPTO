@@ -71,6 +71,9 @@ export default async function ConfiguradorArmarioPage({
     label: `${r.materiales?.nombre ?? "?"} · ${r.acabados?.nombre ?? "?"} · ${r.grosor_mm} mm`,
   }));
 
+  const { data: empCfg } = await s.from("empresas").select("config_empresa").limit(1).maybeSingle<{ config_empresa: Record<string, number> }>();
+  const tabUtilAltoMm = Number(empCfg?.config_empresa?.tablero_util_alto_cm ?? 120) * 10;
+
   const anchoOcupado = (modulos ?? []).reduce((acc, m) => acc + m.ancho_mm, 0);
   const anchoLibre = armario.ancho_total_mm - anchoOcupado;
   const porcentajeOcupado = Math.min(100, Math.round((anchoOcupado / armario.ancho_total_mm) * 100));
@@ -119,12 +122,13 @@ export default async function ConfiguradorArmarioPage({
           ) : (
             (modulos ?? []).map((m, i) => {
               const w = (m.ancho_mm / armario.ancho_total_mm) * 100;
+              const part = m.particiones_verticales ?? 1;
               return (
                 <div
                   key={m.id}
-                  className={`${COLORS[i % COLORS.length]} flex flex-col items-center justify-center border-r border-zinc-400/60 px-1 text-center text-[10px] leading-tight dark:border-zinc-600/60`}
+                  className={`${COLORS[i % COLORS.length]} relative flex flex-col items-center justify-center border-r border-zinc-400/60 px-1 text-center text-[10px] leading-tight dark:border-zinc-600/60`}
                   style={{ width: `${w}%` }}
-                  title={`${m.tipos_modulo?.nombre ?? ""} · ${m.ancho_mm}×${m.alto_mm}×${m.fondo_mm} mm`}
+                  title={`${m.tipos_modulo?.nombre ?? ""} · ${m.ancho_mm}×${m.alto_mm}×${m.fondo_mm} mm${part > 1 ? ` · ${part} apilados` : ""}`}
                 >
                   <span className="font-semibold text-zinc-800 dark:text-zinc-100">
                     {m.nombre_override ?? m.tipos_modulo?.nombre ?? "?"}
@@ -132,6 +136,21 @@ export default async function ConfiguradorArmarioPage({
                   <span className="font-mono text-[9px] text-zinc-700 dark:text-zinc-300">
                     {m.ancho_mm} mm
                   </span>
+                  {part > 1 ? (
+                    <span className="font-mono text-[9px] text-zinc-700 dark:text-zinc-300">
+                      {part}× apilados
+                    </span>
+                  ) : null}
+                  {/* Líneas divisorias por partición */}
+                  {part > 1
+                    ? Array.from({ length: part - 1 }).map((_, k) => (
+                        <div
+                          key={k}
+                          className="pointer-events-none absolute left-0 right-0 border-t-2 border-dashed border-zinc-700/60 dark:border-zinc-200/40"
+                          style={{ top: `${((k + 1) / part) * 100}%` }}
+                        />
+                      ))
+                    : null}
                 </div>
               );
             })
@@ -203,6 +222,7 @@ export default async function ConfiguradorArmarioPage({
                   <th className="px-3 py-2 font-medium">#</th>
                   <th className="px-3 py-2 font-medium">Tipo</th>
                   <th className="px-3 py-2 font-medium">Dimensiones (mm)</th>
+                  <th className="px-3 py-2 font-medium">Part. ↕</th>
                   <th className="px-3 py-2 font-medium">Acciones</th>
                 </tr>
               </thead>
@@ -224,6 +244,15 @@ export default async function ConfiguradorArmarioPage({
                       </td>
                       <td className="px-3 py-2 font-mono text-xs text-zinc-600 dark:text-zinc-400">
                         {m.ancho_mm} × {m.alto_mm} × {m.fondo_mm}
+                      </td>
+                      <td className="px-3 py-2 text-xs">
+                        {(m.particiones_verticales ?? 1) > 1 ? (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                            {m.particiones_verticales}× de {Math.round(m.alto_mm / (m.particiones_verticales ?? 1))} mm
+                          </span>
+                        ) : (
+                          <span className="text-zinc-400">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -248,6 +277,7 @@ export default async function ConfiguradorArmarioPage({
             referencias={refOpciones}
             alto_total_mm={armario.alto_total_mm}
             fondo_mm={armario.fondo_mm}
+            tablero_util_alto_mm={tabUtilAltoMm}
           />
         </div>
       </section>

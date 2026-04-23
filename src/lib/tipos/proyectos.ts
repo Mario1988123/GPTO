@@ -48,6 +48,7 @@ export type ModuloArmario = {
   ancho_mm: number;
   alto_mm: number;
   fondo_mm: number;
+  particiones_verticales: number;
   referencia_tablero_id: string | null;
   notas: string | null;
   created_at: string;
