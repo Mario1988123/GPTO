@@ -6,6 +6,48 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 4.1 — Proyectos + Armarios + Configurador 2D · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+🌐 UI en prod: https://gpto-psi.vercel.app/app/proyectos
+
+**Demo cargada**
+- 1 proyecto "Dormitorio principal — Calle Mayor 10" (cliente de prueba).
+- 1 armario "Armario empotrado principal" (2400×2500×600 mm).
+- 4 módulos "Módulo base" de 600 mm cada uno → llenan exactamente el ancho.
+- Al abrir el configurador se ve la vista frontal esquematizada con 4 bloques coloreados, barra de ocupación verde al 100%.
+
+**Migraciones aplicadas**
+- `013_proyectos.sql` — `proyectos` (FK clientes, estado CHECK) + `armarios` (CASCADE) + `modulos_armario` (CASCADE + tipos_modulo RESTRICT).
+- `014_proyectos_rls.sql` — RLS. `proyectos` con `empresa_id` directo; `armarios` y `modulos_armario` heredan vía `EXISTS` por la FK padre.
+
+**Decisiones tomadas (defaults autorizados por Mario)**
+- **Jerarquía**: Cliente → Proyecto → Armarios → Módulos.
+- **Posición módulos**: columnas horizontales con `orden INTEGER`. Cada módulo ocupa alto total del armario.
+- **Estados**: borrador / presupuestado / confirmado / en_fabricacion / entregado / cancelado.
+- **2D primero**: el 3D Three.js + R3F queda para Capa 4.2 en sub-iteración posterior.
+- **Persistencia al guardar**: forms envían al servidor, server actions hacen redirect + revalidatePath.
+
+**UI**
+- `/app/proyectos` — listado con filtro por estado, badges coloreados.
+- `/app/proyectos/nuevo` — form con select cliente + estado inicial.
+- `/app/proyectos/[id]` — datos + tabla armarios + form inline crear armario.
+- `/app/proyectos/[id]/armarios/[armarioId]` — **configurador**:
+  - Vista frontal esquematizada a escala (aspect ratio del hueco real, módulos como columnas coloreadas con su nombre y ancho).
+  - Barra de progreso verde/rojo: verde si cabe, rojo con texto "Exceso: N mm" si la suma supera el hueco.
+  - Form editar dimensiones del hueco.
+  - Tabla módulos con botones ↑/↓/Quitar.
+  - Form añadir módulo: client component que autocompleta ancho desde `tipo_modulo.ancho_default_mm` y alto/fondo desde el armario padre al seleccionar el tipo.
+
+**Pendiente para siguientes capas**
+- **Capa 4.2 (3D)**: renderizar el mismo configurador con Three.js + R3F.
+- **Capa 5 (explosión)**: generar lista de piezas físicas de cada módulo aplicando `calcularDimension()` del tipo_modulo.
+- **Capa 7 (presupuestos)**: calcular coste = Σ piezas × precio_m² + Σ herrajes + mano de obra (estado `presupuestado`).
+- **Capa 9 (producción)**: estado `en_fabricacion`, kanban por armario o módulo.
+
+---
+
 ### Capa 3 — Tipos de módulo · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -169,21 +211,19 @@ supabase/migrations/005_seed.sql          empresa MAZOR
 
 ---
 
-## Siguiente iteración: Capa 4 — Configurador 2D+3D
+## Siguientes iteraciones
 
-Objetivo: pantalla donde Mario (o un operario) configura un armario real:
-1. Elige cliente + proyecto.
-2. Dibuja un armario a medida en 2D (mural) con módulos arrastrables de la biblioteca (Capa 3).
-3. Al guardar, genera automáticamente la lista de piezas con sus dimensiones reales (usando `calcularDimension`).
-4. Render 3D con Three.js + React Three Fiber.
+**Capa 5 — Explosión de piezas + QR** (recomendado como siguiente, sin BD nueva compleja):
+- Función SQL `generar_piezas_modulo(modulo_armario_id)` que aplica `calcularDimension()` y devuelve las piezas físicas con largo × ancho × grosor × cantidad × referencia_tablero.
+- Tabla `piezas_modulo` (cache materializada) para que las capas 6 y 7 la consulten directamente.
+- Ruta `/t/[qr]` pública para trazabilidad.
+- QR único por pieza con `qrcode` library.
 
-Requerirá tablas nuevas: `proyectos`, `armarios`, `modulos_armario`. Bloque `CAMBIO DE BD` formal cuando toque.
-
-Decisiones pendientes:
-- ¿Proyecto tiene múltiples armarios o 1:1?
-- ¿Estado del proyecto (borrador / presupuestado / aceptado / en fabricación)?
-- ¿Los módulos en un armario se alinean automáticamente o el usuario posiciona libremente?
-- ¿Se renderiza 3D real o solo 2D con cota?
+**Capa 4.2 — Render 3D con R3F** (opcional, puede ir en paralelo):
+- `@react-three/fiber` + `@react-three/drei`.
+- Renderizar cada módulo como Box con sus dimensiones reales.
+- Cámara orbital, luces.
+- Botón "Ver 3D" desde la página del configurador.
 
 ---
 
@@ -225,4 +265,7 @@ Decisiones pendientes:
 - **Capa 2** ✅ **CERRADA**.
 - **Capa 3** (2026-04-23): tipos_modulo con fórmulas estructuradas + piezas + herrajes + presets UI + preview.
 - **Capa 3** ✅ **CERRADA**.
-- **Capa 4** (siguiente) — configurador 2D+3D (Three.js + R3F).
+- **Capa 4.1** (2026-04-23): proyectos + armarios + configurador 2D esquemático.
+- **Capa 4.1** ✅ **CERRADA**.
+- **Capa 5** (siguiente) — explosión de piezas + QR.
+- **Capa 4.2** (opcional paralelo) — render 3D con Three.js + R3F.
