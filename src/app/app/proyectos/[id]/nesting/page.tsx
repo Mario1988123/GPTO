@@ -6,6 +6,7 @@ import { cambiarEstadoRecorte, ejecutarNesting } from "../../nesting-actions";
 import { ToastFromSearchParams } from "../../../catalogo/shared";
 import { ESTADOS_RECORTE, type EstadoRecorte } from "@/lib/tipos/nesting";
 import type { Proyecto } from "@/lib/tipos/proyectos";
+import { SugerenciasOptimizacion } from "./optimizacion";
 
 export const dynamic = "force-dynamic";
 
@@ -329,6 +330,9 @@ export default async function NestingPage({ params }: { params: Promise<{ id: st
           </div>
         </section>
       ) : null}
+
+      {/* Sugerencias de optimización (Capa 6.5) */}
+      <SugerenciasOptimizacion proyectoId={id} />
     </div>
   );
 }
