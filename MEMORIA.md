@@ -6,6 +6,27 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 10 — Trazabilidad pública mejorada · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+- 🌐 `/t/[qr]` rediseñado con timeline visual + historial cronológico + contacto empresa.
+- Tabla `pieza_eventos` nueva + trigger que registra cada cambio de estado automáticamente (estado_anterior, estado_nuevo, actor_user_id, timestamp).
+
+**Migraciones**
+- `024_pieza_eventos.sql` — tabla + trigger `log_pieza_evento()` AFTER INSERT OR UPDATE OF estado en `piezas_modulo`.
+- `025_pieza_eventos_rls.sql` — RLS con SELECT authenticated vía cadena y SELECT anon para timeline público.
+
+**UI `/t/[qr]`**
+- Cabecera con logo empresa (desde `config_empresa.logo_url`) + nombre.
+- Tarjeta principal con estado pill + timeline horizontal 4 pasos con círculos numerados, check verde en completados, negro en actual, línea de progreso proporcional.
+- Fecha entrega prevista del pedido asociado.
+- Detalles técnicos (dimensiones, canto, veta, armario, proyecto, cliente, nº pedido).
+- Historial cronológico vertical de eventos (from trigger) con timestamps.
+- Caja contacto (tel/email/dirección clickables) desde `config_empresa`.
+
+---
+
 ### Capa 11 — Informes · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -342,8 +363,10 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 8** (2026-04-23): pedidos 1:1 con presupuestos + rediseño UI global (sidebar + dashboard). ✅
 - **Capa 9** (2026-04-23): producción kanban de piezas con filtro por pedido. ✅
 - **Capa 11** (2026-04-23): informes con KPIs + gráficos ventas + top clientes + merma + stock. ✅
-- **Capa 10** (siguiente) — trazabilidad pública mejorada (`/t/[qr]` con timeline estados + timestamps).
-- **Capa 12** (luego) — portal cliente final (ver su proyecto sin login vía token).
+- **Capa 10** (2026-04-23): trazabilidad `/t/[qr]` con timeline visual + historial de eventos + contacto empresa. ✅
+- **Capa 12** (siguiente) — portal cliente final (ver su proyecto sin login vía token).
+- **Capa 6.2** (opcional) — drag&drop manual nesting.
+- **Capa 6.5** (opcional) — asistente determinista optimización dimensiones.
 - **Capa 6.2** (opcional) — drag&drop manual sobre el plano de corte.
 - **Capa 6.5** (opcional) — asistente determinista de optimización dimensiones.
 - **Capa 4.2** (paralelo opcional) — render 3D con Three.js + R3F.
