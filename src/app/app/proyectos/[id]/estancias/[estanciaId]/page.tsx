@@ -10,6 +10,7 @@ import {
 import { ToastFromSearchParams } from "../../../../catalogo/shared";
 import { TIPOS_ESTANCIA, TIPOS_INSTALACION, type Estancia } from "@/lib/tipos/estancias";
 import type { Armario, Proyecto } from "@/lib/tipos/proyectos";
+import { Plano2D } from "./plano-2d";
 
 export const dynamic = "force-dynamic";
 
@@ -152,6 +153,23 @@ export default async function DetalleEstanciaPage({
           </div>
         </form>
       </section>
+
+      {/* Plano 2D si la estancia tiene dimensiones */}
+      {estancia.largo_mm && estancia.ancho_mm && (armarios ?? []).length > 0 ? (
+        <Plano2D
+          proyectoId={proyectoId}
+          estanciaId={estanciaId}
+          largoMm={estancia.largo_mm}
+          anchoMm={estancia.ancho_mm}
+          armarios={armarios ?? []}
+        />
+      ) : null}
+
+      {(!estancia.largo_mm || !estancia.ancho_mm) && (armarios ?? []).length > 0 ? (
+        <p className="mt-6 rounded-md border border-dashed border-zinc-300 p-4 text-xs text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+          💡 Define las dimensiones de la estancia (largo/ancho) arriba para ver el <strong>plano 2D en planta</strong> con los armarios posicionados.
+        </p>
+      ) : null}
     </div>
   );
 }

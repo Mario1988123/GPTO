@@ -37,6 +37,9 @@ export type Armario = {
   fondo_mm: number;
   tipo_instalacion: "empotrado" | "suelto";
   margen_tapeta_mm: number;
+  plano_x_mm: number;
+  plano_y_mm: number;
+  plano_rotacion: 0 | 90 | 180 | 270;
   orden: number;
   notas: string | null;
   created_at: string;
