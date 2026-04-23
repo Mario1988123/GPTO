@@ -395,8 +395,22 @@ export async function cambiarEstadoPresupuesto(presupuestoId: string, estado: Es
   const s = await createClient();
   const { error } = await s.from("presupuestos").update({ estado }).eq("id", presupuestoId);
   if (error) redirect(`/app/presupuestos/${presupuestoId}?error=${encodeURIComponent(error.message)}`);
+
+  // Si pasa a aceptado → crear pedido automáticamente.
+  if (estado === "aceptado") {
+    try {
+      const { crearPedidoDesdePresupuesto } = await import("../pedidos/actions");
+      await crearPedidoDesdePresupuesto(presupuestoId);
+    } catch (e) {
+      // Si falla la creación del pedido, ya hemos cambiado el estado. Lo reportamos.
+      const msg = e instanceof Error ? e.message : "Error creando pedido";
+      redirect(`/app/presupuestos/${presupuestoId}?error=${encodeURIComponent("Presupuesto aceptado pero fallo pedido: " + msg)}`);
+    }
+  }
+
   revalidatePath(`/app/presupuestos/${presupuestoId}`);
   revalidatePath("/app/presupuestos");
+  revalidatePath("/app/pedidos");
   redirect(`/app/presupuestos/${presupuestoId}?ok=actualizado`);
 }
 
