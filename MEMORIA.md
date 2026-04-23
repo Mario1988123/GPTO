@@ -6,6 +6,33 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 12 — Portal cliente final · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+- 🌐 `/c/[token]` — portal público mobile-first para el cliente final.
+- Se genera automáticamente un `acceso_token UUID` al crear cualquier proyecto.
+- En `/app/proyectos/[id]` hay una tarjeta verde con la URL del portal para copiarla y mandarla al cliente por WhatsApp/email.
+
+**Migración**
+- `026_proyectos_token.sql` — `ALTER TABLE proyectos ADD COLUMN acceso_token UUID UNIQUE DEFAULT gen_random_uuid()`.
+
+**Autenticación**
+- No usa policies anon: la ruta usa `createAdminClient` (service_role) server-side y filtra por `acceso_token`. El token UUID es la auth.
+- Valida formato UUID antes de consultar.
+
+**Contenido del portal**
+- Logo empresa + proyecto + estado.
+- Progreso de fabricación con barra y 4 contadores (pendiente / cortada / producida / entregada).
+- Tarjeta pedido (si existe) con nº, fecha y entrega prevista.
+- Tarjeta presupuesto (si enviado/aceptado) con total.
+- Lista armarios con módulos (indicando si llevan apilado).
+- Contacto empresa con tel/email clickables.
+
+**Capa 0-12 completas** 🎉 — Hoja de ruta original cerrada de extremo a extremo.
+
+---
+
 ### Capa 10 — Trazabilidad pública mejorada · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -364,9 +391,15 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 9** (2026-04-23): producción kanban de piezas con filtro por pedido. ✅
 - **Capa 11** (2026-04-23): informes con KPIs + gráficos ventas + top clientes + merma + stock. ✅
 - **Capa 10** (2026-04-23): trazabilidad `/t/[qr]` con timeline visual + historial de eventos + contacto empresa. ✅
-- **Capa 12** (siguiente) — portal cliente final (ver su proyecto sin login vía token).
-- **Capa 6.2** (opcional) — drag&drop manual nesting.
-- **Capa 6.5** (opcional) — asistente determinista optimización dimensiones.
+- **Capa 12** (2026-04-23): portal cliente final `/c/[token]` con progreso, pedido, presupuesto, armarios y contacto. ✅
+- 🎉 **HOJA DE RUTA ORIGINAL COMPLETA** (Capas 0-12) 🎉
+- **Iteraciones opcionales pendientes**:
+  - **Capa 6.2** — drag&drop manual sobre plano de corte nesting.
+  - **Capa 6.3 extendido** — herraje de unión específico al facturar módulos apilados.
+  - **Capa 6.5** — asistente determinista de optimización de dimensiones.
+  - **Mini 5.1** — PDF etiquetas QR para pegar en piezas físicas.
+  - **Capa 11 extendido** — asistente IA (Claude) con sugerencias humanas sobre nesting/ventas.
+  - **Ajustes empresa** — UI /app/ajustes para editar config_empresa (logo, nif, contacto, precio_hora, etc).
 - **Capa 6.2** (opcional) — drag&drop manual sobre el plano de corte.
 - **Capa 6.5** (opcional) — asistente determinista de optimización dimensiones.
 - **Capa 4.2** (paralelo opcional) — render 3D con Three.js + R3F.
