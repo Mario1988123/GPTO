@@ -6,6 +6,43 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 6.1 — Nesting automático + Almacén de recortes · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+- 🌐 `/app/proyectos/[id]/nesting` — botón "Ejecutar nesting" → calcula plano de corte y dibuja cada tablero en SVG a escala con las piezas coloreadas y sus dimensiones.
+- 🌐 `/app/recortes` — almacén de retales reutilizables filtrable por estado.
+- Link "Nesting →" en la cabecera de cada proyecto + tarjeta "Recortes" en el dashboard.
+
+**Migraciones aplicadas**
+- `017_nesting.sql` — 3 tablas: `tableros_corte` + `piezas_en_tablero` + `recortes`. Triggers autofill_empresa y updated_at.
+- `018_nesting_rls.sql` — RLS. Empresa directa en tableros_corte y recortes; heredado vía EXISTS en piezas_en_tablero.
+
+**Algoritmo** (`src/lib/nesting/max-rects.ts`)
+- MaxRects Best Short Side Fit en TypeScript puro.
+- Rotación 90° permitida cuando `pieza.respeta_veta=false`.
+- Kerf aplicado sumando `kerf_mm` a cada lado al medir espacio.
+- Split guillotine horizontal+vertical al colocar.
+- Filtro de recortes: descarta rects < 50mm en cualquier lado.
+- Multi-tablero: abre tableros nuevos automáticamente si una pieza no cabe.
+
+**Flujo automático**
+1. Toma todas las `piezas_modulo` del proyecto (requiere haber explosionado en Capa 5).
+2. Agrupa por `referencia_tablero_id`.
+3. Para cada grupo: expande `cantidad` → ocurrencias, empaca.
+4. Persiste tableros + piezas colocadas + recortes residuales (estado inicial `pendiente`).
+
+**Decisiones tomadas**
+- Nesting **automático** en esta sub-capa. Manual (drag&drop) queda para Capa 6.2 sin BD nueva.
+- Recortes con estado `pendiente` inicial → operario debe validar **Conservar** o **Descartar**.
+- Kerf, dimensiones tablero útil, merma → todo desde `empresas.config_empresa` JSONB.
+- Drag&drop real pospuesto (requiere canvas interactivo; el valor/esfuerzo con auto+edit manual posterior es aceptable).
+
+**Limitación conocida del demo**
+El armario demo tiene alto 2500mm pero tablero útil 2400mm → los laterales (2500×600) no caben en ninguna orientación. El algoritmo los reporta como `noColocadas`. Es un caso real: Mario usará tableros "altura cocina" (2750+mm) o ajustará el alto. Esta limitación NO bloquea al sistema — simplemente informa.
+
+---
+
 ### Capa 5 — Explosión de piezas + Trazabilidad QR · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -107,12 +144,12 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 
 ## Siguientes iteraciones
 
-**Capa 6 — Nesting 2D** (siguiente):
-- Agrupar piezas por `referencia_tablero_id`.
-- Algoritmo bin-packing 2D (librería o implementación propia).
-- Respetar veta + `kerf_mm` de config_empresa.
-- Tabla `recortes` para retales reutilizables.
-- Output: tableros físicos + plano de corte + merma.
+**Capa 6.2 — Nesting manual (drag&drop)** (opcional):
+- Client component con canvas o SVG interactivo sobre los tableros generados por 6.1.
+- Drag piezas entre tableros / reposicionar / rotar con botón o tecla.
+- Persiste `piezas_en_tablero.{x_mm, y_mm, rotada, tablero_corte_id}` al soltar.
+- Detección de colisiones y de sobrepasar bordes.
+- Sin BD nueva.
 
 **Capa 7 — Presupuestos**:
 - Tabla `presupuestos` con FK al proyecto.
@@ -139,6 +176,8 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 | Tipos módulo | https://gpto-psi.vercel.app/app/tipos-modulo |
 | Catálogo | https://gpto-psi.vercel.app/app/catalogo |
 | Clientes | https://gpto-psi.vercel.app/app/clientes |
+| Nesting por proyecto | https://gpto-psi.vercel.app/app/proyectos/[id]/nesting |
+| Almacén recortes | https://gpto-psi.vercel.app/app/recortes |
 | Trazabilidad pública | https://gpto-psi.vercel.app/t/[qr] |
 | Repo | https://github.com/Mario1988123/GPTO |
 | Vercel project | https://vercel.com/vercomi/gpto |
@@ -157,7 +196,8 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 3** (2026-04-23): tipos_modulo con fórmulas estructuradas. ✅
 - **Capa 4.1** (2026-04-23): proyectos + armarios + configurador 2D. ✅
 - **Capa 5** (2026-04-23): explosión de piezas + función regenerar + /t/[qr] pública. ✅
-- **Capa 6** (siguiente) — nesting 2D + recortes.
-- **Capa 7** (luego) — presupuestos con IVA + PDF.
+- **Capa 6.1** (2026-04-23): nesting automático MaxRects + almacén de recortes con validación. ✅
+- **Capa 6.2** (opcional) — drag&drop manual sobre el plano de corte.
+- **Capa 7** (siguiente) — presupuestos con IVA + PDF.
 - **Capa 4.2** (paralelo opcional) — render 3D con Three.js + R3F.
 - **Mini 5.1** (opcional) — PDF etiquetas QR.
