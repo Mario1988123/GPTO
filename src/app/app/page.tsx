@@ -6,10 +6,19 @@ import {
   FolderKanban,
   Receipt,
   PackageCheck,
+  Hammer,
+  Scissors,
+  BarChart3,
+  Settings,
   ArrowRight,
+  TrendingUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatEur } from "@/lib/tipos/presupuestos";
+import { PageHeader } from "@/components/page-header";
+import { StatCard } from "@/components/stat-card";
+import { EmptyState } from "@/components/empty-state";
+import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
@@ -35,144 +44,229 @@ export default async function AppHomePage() {
   type PedRow = { importe_eur: number };
   const facturadoTotal = ((totalFacturado.data ?? []) as PedRow[]).reduce((a, p) => a + Number(p.importe_eur), 0);
 
+  // @ts-expect-error relacion
+  const empresaNombre = usuario?.empresas?.nombre ?? "GPTO";
+  const primerNombre = usuario?.nombre?.split(" ")[0] ?? "admin";
+
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-8">
-        <p className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-          {/* @ts-expect-error relacion */}
-          {usuario?.empresas?.nombre ?? "GPTO"}
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-          Hola, {usuario?.nombre?.split(" ")[0] ?? "admin"} 👋
-        </h1>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Resumen del estado actual del taller.
-        </p>
-      </header>
+    <div className="mx-auto max-w-7xl px-6 py-8 lg:py-10">
+      <PageHeader
+        eyebrow={empresaNombre}
+        title={`Hola, ${primerNombre}`}
+        description="Resumen del estado actual del taller."
+      />
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Clientes activos" value={String(clientesAct.count ?? 0)} Icon={Users} />
-        <StatCard label="Proyectos en curso" value={String(proyectosAct.count ?? 0)} Icon={FolderKanban} />
-        <StatCard label="Presupuestos abiertos" value={String(presupuestosPend.count ?? 0)} Icon={Receipt} />
-        <StatCard label="Pedidos en fabricación" value={String(pedidosEnFab.count ?? 0)} Icon={PackageCheck} accent />
+      {/* KPIs */}
+      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Clientes activos" value={clientesAct.count ?? 0} icon={Users} />
+        <StatCard label="Proyectos en curso" value={proyectosAct.count ?? 0} icon={FolderKanban} />
+        <StatCard label="Presupuestos abiertos" value={presupuestosPend.count ?? 0} icon={Receipt} />
+        <StatCard label="Pedidos en fabricación" value={pedidosEnFab.count ?? 0} icon={PackageCheck} variant="accent" />
       </section>
 
-      <section className="mt-4 rounded-xl border border-zinc-200 bg-gradient-to-br from-zinc-900 to-zinc-800 p-6 text-white shadow-sm dark:border-zinc-800 dark:from-zinc-100 dark:to-zinc-50 dark:text-zinc-900">
-        <p className="text-xs font-medium uppercase tracking-wider opacity-75">Facturado (pedidos fabricados y entregados)</p>
-        <p className="mt-2 font-mono text-4xl font-semibold">{formatEur(facturadoTotal)}</p>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Gestión</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <NavCard href="/app/clientes" title="Clientes" desc="Gestión de clientes finales" Icon={Users} />
-          <NavCard href="/app/catalogo" title="Catálogo" desc="Materiales, acabados, referencias" Icon={BookOpen} />
-          <NavCard href="/app/tipos-modulo" title="Tipos de módulo" desc="Plantillas paramétricas" Icon={Boxes} />
-          <NavCard href="/app/proyectos" title="Proyectos" desc="Configurador de armarios 2D" Icon={FolderKanban} />
-          <NavCard href="/app/presupuestos" title="Presupuestos" desc="Cálculo con IVA y PDF" Icon={Receipt} />
-          <NavCard href="/app/pedidos" title="Pedidos" desc="Flujo de fabricación" Icon={PackageCheck} />
+      {/* Banner facturación */}
+      <section className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-foreground via-foreground to-sidebar-primary p-6 text-background shadow-xl lg:p-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,_rgba(255,255,255,0.15)_0%,_transparent_50%)]" />
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-70">
+              Facturado · pedidos fabricados y entregados
+            </p>
+            <p className="mt-2 font-mono text-4xl font-bold tracking-tight sm:text-5xl">
+              {formatEur(facturadoTotal)}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-full bg-background/10 px-3 py-1.5 text-xs font-semibold backdrop-blur-sm">
+            <TrendingUp className="h-3.5 w-3.5" />
+            Acumulado histórico
+          </div>
         </div>
       </section>
 
-      <section className="mt-8 grid gap-6 lg:grid-cols-2">
-        <Card title="Últimos proyectos" href="/app/proyectos">
+      {/* Gestión */}
+      <section className="mt-10">
+        <div className="mb-4 flex items-end justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Áreas de trabajo
+            </p>
+            <h2 className="mt-0.5 text-lg font-bold tracking-tight">Gestión diaria</h2>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <NavCard href="/app/clientes" title="Clientes" desc="Gestión de clientes finales" icon={Users} />
+          <NavCard href="/app/proyectos" title="Proyectos" desc="Configurador 3D + estancias" icon={FolderKanban} />
+          <NavCard href="/app/presupuestos" title="Presupuestos" desc="Cálculo con IVA y PDF" icon={Receipt} />
+          <NavCard href="/app/pedidos" title="Pedidos" desc="Flujo de fabricación" icon={PackageCheck} />
+          <NavCard href="/app/produccion" title="Producción" desc="Kanban de piezas con QR" icon={Hammer} accent />
+          <NavCard href="/app/recortes" title="Recortes" desc="Almacén de merma reutilizable" icon={Scissors} />
+          <NavCard href="/app/catalogo" title="Catálogo" desc="Materiales, acabados, herrajes" icon={BookOpen} />
+          <NavCard href="/app/tipos-modulo" title="Tipos de módulo" desc="Plantillas paramétricas" icon={Boxes} />
+          <NavCard href="/app/informes" title="Informes" desc="Facturación, merma, conversión" icon={BarChart3} />
+        </div>
+      </section>
+
+      {/* Actividad reciente */}
+      <section className="mt-10 grid gap-6 lg:grid-cols-2">
+        <ActivityCard title="Últimos proyectos" href="/app/proyectos" icon={FolderKanban}>
           {(ultimosProyectos.data ?? []).length === 0 ? (
-            <Empty text="Sin proyectos todavía" />
+            <EmptyState
+              icon={FolderKanban}
+              title="Sin proyectos todavía"
+              description="Crea el primer proyecto para empezar a diseñar armarios."
+            />
           ) : (
-            <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            <ul className="divide-y divide-border">
               {((ultimosProyectos.data ?? []) as unknown as { id: string; nombre: string; estado: string; updated_at: string; clientes: { nombre: string } | null }[]).map((p) => (
                 <li key={p.id}>
-                  <Link href={`/app/proyectos/${p.id}`} className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-zinc-900 dark:text-zinc-100">{p.nombre}</p>
-                      <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                        {p.clientes?.nombre ?? "—"} · {p.estado}
+                  <Link href={`/app/proyectos/${p.id}`} className="group flex items-center justify-between gap-3 px-5 py-3.5 text-sm transition hover:bg-muted/50">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">{p.nombre}</p>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {p.clientes?.nombre ?? "—"}
                       </p>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-zinc-400" />
+                    <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">
+                      {p.estado}
+                    </Badge>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
                   </Link>
                 </li>
               ))}
             </ul>
           )}
-        </Card>
+        </ActivityCard>
 
-        <Card title="Últimos presupuestos" href="/app/presupuestos">
+        <ActivityCard title="Últimos presupuestos" href="/app/presupuestos" icon={Receipt}>
           {(ultimosPresupuestos.data ?? []).length === 0 ? (
-            <Empty text="Aún no has creado presupuestos" />
+            <EmptyState
+              icon={Receipt}
+              title="Aún no has creado presupuestos"
+              description="Al aceptar un proyecto se generará automáticamente."
+            />
           ) : (
-            <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            <ul className="divide-y divide-border">
               {((ultimosPresupuestos.data ?? []) as unknown as { id: string; numero: string | null; estado: string; total_eur: number; proyectos: { nombre: string } | null }[]).map((p) => (
                 <li key={p.id}>
-                  <Link href={`/app/presupuestos/${p.id}`} className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                    <div className="min-w-0">
-                      <p className="truncate font-mono text-xs font-medium text-zinc-900 dark:text-zinc-100">
-                        {p.numero ?? "(borrador)"} <span className="ml-1 text-[10px] uppercase text-zinc-500">{p.estado}</span>
+                  <Link href={`/app/presupuestos/${p.id}`} className="group flex items-center justify-between gap-3 px-5 py-3.5 text-sm transition hover:bg-muted/50">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-mono text-xs font-bold">
+                        {p.numero ?? "(borrador)"}
                       </p>
-                      <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {p.proyectos?.nombre ?? "—"}
                       </p>
                     </div>
-                    <p className="font-mono text-sm font-medium">{formatEur(Number(p.total_eur))}</p>
+                    <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">
+                      {p.estado}
+                    </Badge>
+                    <p className="font-mono text-sm font-bold tabular-nums">{formatEur(Number(p.total_eur))}</p>
                   </Link>
                 </li>
               ))}
             </ul>
           )}
-        </Card>
+        </ActivityCard>
+      </section>
+
+      {/* Ajustes discreto */}
+      <section className="mt-10 pb-8">
+        <Link
+          href="/app/ajustes"
+          className="flex items-center justify-between rounded-xl border border-dashed border-border bg-muted/30 px-5 py-4 text-sm transition hover:border-foreground/20 hover:bg-muted/50"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background text-muted-foreground ring-1 ring-border">
+              <Settings className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Ajustes de la empresa</p>
+              <p className="text-xs text-muted-foreground">IVA, datos fiscales, numeración, usuarios</p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
       </section>
     </div>
   );
 }
 
-function StatCard({ label, value, Icon, accent = false }: { label: string; value: string; Icon: React.ComponentType<{ className?: string }>; accent?: boolean }) {
-  return (
-    <div className={`rounded-xl border p-5 shadow-sm transition hover:shadow ${accent ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900" : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"}`}>
-      <div className="flex items-start justify-between">
-        <p className={`text-xs font-medium uppercase tracking-wider ${accent ? "opacity-75" : "text-zinc-500 dark:text-zinc-400"}`}>{label}</p>
-        <Icon className={`h-4 w-4 ${accent ? "opacity-75" : "text-zinc-400 dark:text-zinc-500"}`} />
-      </div>
-      <p className="mt-3 text-3xl font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function NavCard({ href, title, desc, Icon }: { href: string; title: string; desc: string; Icon: React.ComponentType<{ className?: string }> }) {
+function NavCard({
+  href,
+  title,
+  desc,
+  icon: Icon,
+  accent = false,
+}: {
+  href: string;
+  title: string;
+  desc: string;
+  icon: React.ComponentType<{ className?: string }>;
+  accent?: boolean;
+}) {
   return (
     <Link
       href={href}
-      className="group flex items-start gap-3 rounded-xl border border-zinc-200 bg-white p-5 transition hover:border-zinc-400 hover:shadow dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-600"
+      className={`group relative overflow-hidden rounded-2xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg ${
+        accent
+          ? "border-foreground/20 bg-gradient-to-br from-card to-muted shadow-sm"
+          : "border-border bg-card hover:border-foreground/20"
+      }`}
     >
-      <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700 transition group-hover:bg-zinc-900 group-hover:text-white dark:bg-zinc-800 dark:text-zinc-300 dark:group-hover:bg-zinc-100 dark:group-hover:text-zinc-900">
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="flex-1">
-        <p className="flex items-center justify-between text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-          {title}
-          <ArrowRight className="h-4 w-4 text-zinc-400 transition group-hover:translate-x-0.5 group-hover:text-zinc-900 dark:group-hover:text-zinc-100" />
-        </p>
-        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{desc}</p>
+      {accent ? (
+        <div className="absolute right-0 top-0 h-16 w-16 -translate-y-1/2 translate-x-1/2 rounded-full bg-sidebar-primary/10 blur-2xl" />
+      ) : null}
+      <div className="relative flex items-start gap-3">
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition ${
+            accent
+              ? "bg-foreground text-background shadow-md shadow-foreground/20"
+              : "bg-muted text-foreground group-hover:bg-foreground group-hover:text-background"
+          }`}
+        >
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-base font-bold tracking-tight">{title}</p>
+            <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
+        </div>
       </div>
     </Link>
   );
 }
 
-function Card({ title, href, children }: { title: string; href?: string; children: React.ReactNode }) {
+function ActivityCard({
+  title,
+  href,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  href?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</h3>
+    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
+        <div className="flex items-center gap-2">
+          {Icon ? <Icon className="h-4 w-4 text-muted-foreground" /> : null}
+          <h3 className="text-sm font-bold tracking-tight">{title}</h3>
+        </div>
         {href ? (
-          <Link href={href} className="text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-            Ver todo →
+          <Link
+            href={href}
+            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+          >
+            Ver todo
+            <ArrowRight className="h-3 w-3" />
           </Link>
         ) : null}
       </div>
       {children}
     </div>
   );
-}
-
-function Empty({ text }: { text: string }) {
-  return <div className="p-6 text-center text-sm text-zinc-500 dark:text-zinc-400">{text}</div>;
 }
