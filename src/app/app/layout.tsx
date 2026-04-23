@@ -10,6 +10,7 @@ import {
   PackageCheck,
   Hammer,
   BarChart3,
+  Settings,
   LayoutDashboard,
   LogOut,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const NAV = [
   { href: "/app/pedidos",         label: "Pedidos",        icon: PackageCheck },
   { href: "/app/produccion",      label: "Producción",     icon: Hammer },
   { href: "/app/informes",        label: "Informes",       icon: BarChart3 },
+  { href: "/app/ajustes",         label: "Ajustes",        icon: Settings },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
