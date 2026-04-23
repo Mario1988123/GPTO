@@ -11,7 +11,9 @@ import {
 } from "../../../actions";
 import { ToastFromSearchParams } from "../../../../catalogo/shared";
 import { AnadirModuloForm } from "./anadir-modulo";
+import { cambiarEstadoPieza, regenerarPiezasArmario } from "../../../piezas-actions";
 import type { Armario, ModuloArmario, Proyecto } from "@/lib/tipos/proyectos";
+import { ESTADOS_PIEZA, type EstadoPieza, type PiezaModulo } from "@/lib/tipos/piezas";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +42,7 @@ export default async function ConfiguradorArmarioPage({
   const { data: armario } = await s.from("armarios").select("*").eq("id", armarioId).maybeSingle<Armario>();
   if (!armario) notFound();
 
-  const [{ data: proyecto }, { data: modulos }, { data: tipos }, { data: refs }] = await Promise.all([
+  const [{ data: proyecto }, { data: modulos }, { data: tipos }, { data: refs }, { data: piezasRaw }] = await Promise.all([
     s.from("proyectos").select("*").eq("id", proyectoId).maybeSingle<Proyecto>(),
     s.from("modulos_armario")
       .select("*, tipos_modulo(nombre)")
@@ -55,6 +57,10 @@ export default async function ConfiguradorArmarioPage({
       .select("id, grosor_mm, materiales(nombre), acabados(nombre)")
       .eq("activo", true)
       .order("grosor_mm"),
+    s.from("piezas_modulo")
+      .select("*, modulos_armario!inner(armario_id, orden, nombre_override, tipos_modulo(nombre))")
+      .eq("modulos_armario.armario_id", armarioId)
+      .order("orden"),
   ]);
 
   if (!proyecto) notFound();
@@ -245,6 +251,83 @@ export default async function ConfiguradorArmarioPage({
           />
         </div>
       </section>
+
+      {/* Sección 4: piezas físicas */}
+      {(() => {
+        const regen = async () => {
+          "use server";
+          await regenerarPiezasArmario(proyectoId, armarioId);
+        };
+        const EST_PIEZA = Object.fromEntries(ESTADOS_PIEZA.map((e) => [e.value, e]));
+        return (
+          <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">Piezas físicas ({piezasRaw?.length ?? 0})</h2>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Generadas aplicando las fórmulas del tipo_modulo a las medidas reales de cada módulo.
+                </p>
+              </div>
+              <form action={regen}>
+                <button
+                  type="submit"
+                  disabled={(modulos?.length ?? 0) === 0}
+                  className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900"
+                >
+                  {(piezasRaw?.length ?? 0) === 0 ? "Explosionar piezas" : "Regenerar piezas"}
+                </button>
+              </form>
+            </div>
+
+            {(piezasRaw ?? []).length === 0 ? (
+              <p className="rounded-md bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+                No hay piezas calculadas. Pulsa <strong>Explosionar piezas</strong> para generarlas a partir de los módulos configurados.
+              </p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950/50 dark:text-zinc-400">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Módulo</th>
+                      <th className="px-3 py-2 font-medium">Pieza</th>
+                      <th className="px-3 py-2 font-medium">Ud.</th>
+                      <th className="px-3 py-2 font-medium">Dimensiones (mm)</th>
+                      <th className="px-3 py-2 font-medium">Estado</th>
+                      <th className="px-3 py-2 font-medium">QR</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                    {(piezasRaw ?? []).map((p) => {
+                      const rel = (p as unknown as { modulos_armario?: { nombre_override: string | null; orden: number; tipos_modulo?: { nombre?: string } | null } }).modulos_armario;
+                      const modNombre = rel?.nombre_override ?? rel?.tipos_modulo?.nombre ?? "?";
+                      const modOrden = (rel?.orden ?? 0) + 1;
+                      const est = EST_PIEZA[p.estado as EstadoPieza];
+                      return (
+                        <tr key={p.id}>
+                          <td className="px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400">#{modOrden} · {modNombre}</td>
+                          <td className="px-3 py-2 font-medium">{p.nombre}</td>
+                          <td className="px-3 py-2 text-zinc-600 dark:text-zinc-400">{p.cantidad}</td>
+                          <td className="px-3 py-2 font-mono text-xs">{p.largo_mm} × {p.ancho_mm} × {p.grosor_mm}</td>
+                          <td className="px-3 py-2">
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${est?.color ?? ""}`}>
+                              {est?.label ?? p.estado}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <Link href={`/t/${p.qr_code}`} target="_blank" className="text-xs text-zinc-600 hover:underline dark:text-zinc-400">
+                              ver
+                            </Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        );
+      })()}
     </div>
   );
 }
