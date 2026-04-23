@@ -6,6 +6,27 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 7.2 — PDF del presupuesto · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+- Botón **"Descargar PDF"** en `/app/presupuestos/[id]` (también accesible en borrador).
+- Ruta API `/api/presupuestos/[id]/pdf` (Node runtime) genera PDF server-side con `@react-pdf/renderer@4.5.1`.
+- PDF A4 con cabecera (logo+datos empresa), caja cliente, tabla de líneas agrupadas por categoría, totales destacados, notas y pie fijo con paginación.
+- Nombre archivo = número del presupuesto (`PRES-2026-0001.pdf`) o `presupuesto-borrador.pdf`.
+
+**Archivos**
+- `src/lib/pdf/presupuesto.tsx` — componente PDF React.
+- `src/app/api/presupuestos/[id]/pdf/route.tsx` — handler GET con auth + queries JOIN + renderToBuffer.
+
+**Config opcional en `empresas.config_empresa`** (cualquiera puede editarlo con futuro UI `/app/ajustes`):
+- `logo_url` — URL pública de imagen.
+- `empresa_nif`, `empresa_direccion`, `empresa_telefono`, `empresa_email` — datos que aparecen en cabecera.
+
+**Deps añadidas**: `@react-pdf/renderer@4.5.1`.
+
+---
+
 ### Capa 7.1 — Presupuestos (borrador + emitir + líneas editables) · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -256,7 +277,8 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 6.1** (2026-04-23): nesting automático MaxRects + almacén de recortes con validación. ✅
 - **Capa 6.3** (2026-04-23): particiones verticales de módulos (apilar módulos grandes). ✅
 - **Capa 7.1** (2026-04-23): presupuestos con líneas editables + emisión con snapshot + numeración automática. ✅
-- **Capa 7.2** (siguiente) — PDF descargable con plantilla.
+- **Capa 7.2** (2026-04-23): PDF descargable del presupuesto con @react-pdf/renderer. ✅
+- **Capa 8** (siguiente) — pedidos (aceptar presupuesto → genera pedido → estado producción).
 - **Capa 6.2** (opcional) — drag&drop manual sobre el plano de corte.
 - **Capa 6.5** (opcional) — asistente determinista de optimización dimensiones.
 - **Capa 4.2** (paralelo opcional) — render 3D con Three.js + R3F.
