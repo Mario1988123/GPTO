@@ -6,6 +6,37 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 1 — Clientes · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+🌐 UI en prod: https://gpto-psi.vercel.app/app/clientes — listado, búsqueda, filtro activos/inactivos/todos, crear, editar, desactivar/reactivar, eliminar.
+🧪 Verificación: insert/select contra BD remota con sesión de Mario → OK (RLS filtra por empresa).
+
+**Migraciones aplicadas**
+- `006_clientes.sql` — tabla con `direccion JSONB`, `UNIQUE (empresa_id, nif) WHERE nif IS NOT NULL`, trigger updated_at, índices por empresa y por nombre.
+- `007_clientes_rls.sql` — RLS on. SELECT misma empresa · INSERT/UPDATE admin+operario · DELETE solo admin.
+
+**Código frontend (`src/app/app/clientes/`)**
+- `page.tsx` — listado con búsqueda y filtros.
+- `nuevo/page.tsx` + `[id]/page.tsx` — crear y editar (form compartido).
+- `cliente-form.tsx` — client component con campos completos y dirección anidada.
+- `actions.ts` — server actions: crearCliente, actualizarCliente, alternarActivo, eliminarCliente.
+- `toasts.tsx` — dispara `toast.success/error` desde `?ok=...` / `?error=...` tras redirect de server action.
+- `src/lib/tipos/cliente.ts` — tipos `Cliente` y `Direccion`.
+
+**Infra UI**
+- `sonner` instalado vía shadcn → `src/components/ui/sonner.tsx`.
+- `<Toaster position="top-right" duration={3000} richColors closeButton />` en `src/app/layout.tsx`.
+- `next-themes` añadido como dep transitiva.
+
+**Decisiones tomadas en esta iteración (autorizadas por Mario en masa con "sigue" tras Capa 0)**
+- `direccion` → JSONB (flexible, evita migración si el formato cambia).
+- `nif` → único dentro de la empresa, pero opcional (clientes sin NIF permitidos).
+- Soft delete (`activo=false`) como flujo principal; DELETE hard disponible solo para admins, se romperá por FK cuando haya presupuestos en Capa 7 (deseable).
+
+---
+
 ### Sub 0.4 — Auth (login + guards) · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -74,16 +105,11 @@ supabase/migrations/005_seed.sql          empresa MAZOR
 
 ---
 
-## Siguiente iteración: Capa 1 — Clientes (propuesta aparcada)
+## Siguiente iteración: Capa 2 — Catálogo
 
-Esperando aprobación tuya del bloque `CAMBIO DE BD` en `NOTAS.md` (tabla `clientes` con RLS).
+Tablas previstas: `materiales`, `acabados`, `referencias_tablero` (núcleo), `cantos`, `herrajes`, `config_empresa` (ya embebida en `empresas.config_empresa` JSONB — revisar si separar).
 
-Cuando lo apruebes, iteración Capa 1:
-1. Aplicar migraciones `006_clientes.sql` y `007_clientes_rls.sql`.
-2. UI `/app/clientes`: listado con búsqueda + paginación.
-3. UI `/app/clientes/nuevo`: form create.
-4. UI `/app/clientes/[id]`: detalle + editar.
-5. Toasts verde/rojo 3s en save/delete.
+Requiere bloque `CAMBIO DE BD` formal antes de aplicar (Mario debe aprobar).
 
 ---
 
@@ -119,4 +145,6 @@ Cuando lo apruebes, iteración Capa 1:
 - **Sub 0.3** (2026-04-23): schema BD multitenant (empresas + usuarios + RLS).
 - **Sub 0.4** (2026-04-23): auth (login + proxy + layout protegido).
 - **Capa 0** ✅ **CERRADA** — base multitenant + auth funcional.
-- **Capa 1** (propuesta en NOTAS.md, esperando OK).
+- **Capa 1** (2026-04-23): clientes CRUD con RLS + soft delete + toasts.
+- **Capa 1** ✅ **CERRADA**.
+- **Capa 2** (siguiente) — catálogo.
