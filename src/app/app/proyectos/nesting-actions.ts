@@ -160,6 +160,16 @@ export async function ejecutarNesting(proyectoId: string) {
   redirect(`/app/proyectos/${proyectoId}/nesting?ok=creado`);
 }
 
+export async function moverPiezaEnTablero(payload: { id: string; x_mm: number; y_mm: number }) {
+  const s = await createClient();
+  const { error } = await s.from("piezas_en_tablero").update({
+    x_mm: Math.max(0, Math.floor(payload.x_mm)),
+    y_mm: Math.max(0, Math.floor(payload.y_mm)),
+  }).eq("id", payload.id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/app/proyectos");
+}
+
 export async function cambiarEstadoRecorte(
   recorteId: string,
   estado: EstadoRecorte,

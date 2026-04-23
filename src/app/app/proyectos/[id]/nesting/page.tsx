@@ -2,11 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { cambiarEstadoRecorte, ejecutarNesting } from "../../nesting-actions";
+import { cambiarEstadoRecorte, ejecutarNesting, moverPiezaEnTablero } from "../../nesting-actions";
 import { ToastFromSearchParams } from "../../../catalogo/shared";
 import { ESTADOS_RECORTE, type EstadoRecorte } from "@/lib/tipos/nesting";
 import type { Proyecto } from "@/lib/tipos/proyectos";
 import { SugerenciasOptimizacion } from "./optimizacion";
+import { InteractiveTablero } from "./interactive-tablero";
 
 export const dynamic = "force-dynamic";
 
@@ -219,45 +220,24 @@ export default async function NestingPage({ params }: { params: Promise<{ id: st
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">{materia} · {tab.ancho_mm}×{tab.alto_mm} mm útil · ocupación {ocupPct}%</p>
                 </div>
               </div>
-              <div className="overflow-hidden rounded-lg border border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950">
-                <svg
-                  viewBox={`0 0 ${tab.ancho_mm} ${tab.alto_mm}`}
-                  preserveAspectRatio="xMidYMid meet"
-                  className="h-auto w-full"
-                  style={{ maxHeight: 420 }}
-                >
-                  <rect x={0} y={0} width={tab.ancho_mm} height={tab.alto_mm} fill="none" stroke="#a1a1aa" strokeWidth={3} />
-                  {(tab.piezas_en_tablero ?? []).map((p, i) => (
-                    <g key={p.id}>
-                      <rect
-                        x={p.x_mm}
-                        y={p.y_mm}
-                        width={p.largo_mm}
-                        height={p.ancho_mm}
-                        className={COLORES[(i + idx) % COLORES.length]}
-                        strokeWidth={2}
-                      />
-                      <text
-                        x={p.x_mm + p.largo_mm / 2}
-                        y={p.y_mm + p.ancho_mm / 2}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        fontSize={Math.max(14, Math.min(p.largo_mm / 12, 36))}
-                        className="fill-zinc-900 dark:fill-zinc-100"
-                        style={{ pointerEvents: "none" }}
-                      >
-                        <tspan x={p.x_mm + p.largo_mm / 2} dy="-0.4em" fontWeight="600">
-                          {p.piezas_modulo?.nombre ?? "?"}
-                          {p.ocurrencia > 1 ? ` #${p.ocurrencia}` : ""}
-                        </tspan>
-                        <tspan x={p.x_mm + p.largo_mm / 2} dy="1.2em">
-                          {p.largo_mm}×{p.ancho_mm}{p.rotada ? " ↻" : ""}
-                        </tspan>
-                      </text>
-                    </g>
-                  ))}
-                </svg>
-              </div>
+              <InteractiveTablero
+                tableroId={tab.id}
+                ancho_mm={tab.ancho_mm}
+                alto_mm={tab.alto_mm}
+                ajusteIdx={idx}
+                piezas={(tab.piezas_en_tablero ?? []).map((p) => ({
+                  id: p.id,
+                  x_mm: p.x_mm,
+                  y_mm: p.y_mm,
+                  largo_mm: p.largo_mm,
+                  ancho_mm: p.ancho_mm,
+                  rotada: p.rotada,
+                  ocurrencia: p.ocurrencia,
+                  cantidad: p.ocurrencia,
+                  nombre: p.piezas_modulo?.nombre ?? "?",
+                }))}
+                actionMover={async (pl) => { "use server"; await moverPiezaEnTablero(pl); }}
+              />
             </div>
           );
         })}
