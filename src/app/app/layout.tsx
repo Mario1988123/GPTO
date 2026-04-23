@@ -8,6 +8,7 @@ import {
   Scissors,
   Receipt,
   PackageCheck,
+  Hammer,
   LayoutDashboard,
   LogOut,
 } from "lucide-react";
@@ -25,6 +26,7 @@ const NAV = [
   { href: "/app/recortes",        label: "Recortes",       icon: Scissors },
   { href: "/app/presupuestos",    label: "Presupuestos",   icon: Receipt },
   { href: "/app/pedidos",         label: "Pedidos",        icon: PackageCheck },
+  { href: "/app/produccion",      label: "Producción",     icon: Hammer },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
