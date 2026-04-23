@@ -11,7 +11,10 @@ import {
 } from "../../../actions";
 import { ToastFromSearchParams } from "../../../../catalogo/shared";
 import { AnadirModuloForm } from "./anadir-modulo";
+import { Armario3D } from "./armario-3d";
 import { cambiarEstadoPieza, regenerarPiezasArmario } from "../../../piezas-actions";
+import { actualizarDatosInstalacion } from "../../../estancias-actions";
+import { TIPOS_INSTALACION } from "@/lib/tipos/estancias";
 import type { Armario, ModuloArmario, Proyecto } from "@/lib/tipos/proyectos";
 import { ESTADOS_PIEZA, type EstadoPieza, type PiezaModulo } from "@/lib/tipos/piezas";
 
@@ -98,7 +101,34 @@ export default async function ConfiguradorArmarioPage({
       </h1>
       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
         Hueco: {armario.ancho_total_mm} × {armario.alto_total_mm} × {armario.fondo_mm} mm
+        <span className="ml-2 text-xs rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-zinc-800">
+          {armario.tipo_instalacion === "empotrado" ? `Empotrado · tapeta ${armario.margen_tapeta_mm}mm` : "Suelto"}
+        </span>
       </p>
+
+      {/* Vista 3D */}
+      <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="text-lg font-medium">Vista 3D</h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Arrastra para rotar · rueda para zoom</p>
+        </div>
+        <Armario3D
+          armario_ancho_mm={armario.ancho_total_mm}
+          armario_alto_mm={armario.alto_total_mm}
+          armario_fondo_mm={armario.fondo_mm}
+          tipo_instalacion={armario.tipo_instalacion}
+          margen_tapeta_mm={armario.margen_tapeta_mm}
+          modulos={(modulos ?? []).map((m, i) => ({
+            id: m.id,
+            nombre: m.nombre_override ?? m.tipos_modulo?.nombre ?? "Módulo",
+            ancho_mm: m.ancho_mm,
+            alto_mm: m.alto_mm,
+            fondo_mm: m.fondo_mm,
+            particiones: m.particiones_verticales ?? 1,
+            color: ["#93c5fd","#86efac","#fcd34d","#d8b4fe","#fda4af","#67e8f9","#bef264","#f0abfc"][i % 8],
+          }))}
+        />
+      </section>
 
       {/* Preview visual del armario */}
       <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
@@ -175,7 +205,51 @@ export default async function ConfiguradorArmarioPage({
 
       {/* Form editar armario */}
       <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">Dimensiones del hueco</h2>
+        <h2 className="mb-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">Dimensiones del hueco y tipo de instalación</h2>
+        <form action={async (fd: FormData) => { "use server"; await actualizarDatosInstalacion(proyectoId, armarioId, fd); }} className="grid gap-3 sm:grid-cols-6">
+          <div className="sm:col-span-2 space-y-1">
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Tipo instalación</label>
+            <select name="tipo_instalacion" defaultValue={armario.tipo_instalacion} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950">
+              {TIPOS_INSTALACION.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Tapeta (mm)</label>
+            <input name="margen_tapeta_mm" type="number" min="0" max="50" defaultValue={armario.margen_tapeta_mm} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400">solo empotrado</p>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Nombre</label>
+            <input name="nombre" defaultValue={armario.nombre} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Ancho (mm)</label>
+            <input name="ancho_total_mm" type="number" required defaultValue={armario.ancho_total_mm} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Alto (mm)</label>
+            <input name="alto_total_mm" type="number" required defaultValue={armario.alto_total_mm} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+          </div>
+          <div className="space-y-1">
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Fondo (mm)</label>
+            <input name="fondo_mm" type="number" required defaultValue={armario.fondo_mm} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+          </div>
+          <div className="sm:col-span-6 flex items-center gap-3">
+            <button type="submit" className="rounded-md bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
+              Guardar cambios
+            </button>
+            <form action={delArm} className="inline">
+              <button type="submit" className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 dark:border-red-900 dark:bg-zinc-950 dark:text-red-300">
+                Eliminar armario
+              </button>
+            </form>
+          </div>
+        </form>
+      </section>
+
+      {/* Form editar armario antiguo (campos basicos) - oculto ahora que lo reemplaza el form de arriba */}
+      <section className="hidden rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">(oculto)</h2>
         <form action={updArm} className="grid gap-3 sm:grid-cols-5">
           <div className="sm:col-span-2 space-y-1">
             <label htmlFor="nombre" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Nombre</label>

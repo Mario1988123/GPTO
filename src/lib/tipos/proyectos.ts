@@ -30,10 +30,13 @@ export type Proyecto = {
 export type Armario = {
   id: string;
   proyecto_id: string;
+  estancia_id: string;
   nombre: string;
   ancho_total_mm: number;
   alto_total_mm: number;
   fondo_mm: number;
+  tipo_instalacion: "empotrado" | "suelto";
+  margen_tapeta_mm: number;
   orden: number;
   notas: string | null;
   created_at: string;
