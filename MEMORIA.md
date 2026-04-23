@@ -6,6 +6,27 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Sesión maratón de capas opcionales · ✅ Todas cerradas
+**Fecha**: 2026-04-23
+
+Se cerraron 7 capas opcionales pendientes en una sola tanda con autorización previa de Mario:
+
+**1. `/app/ajustes`** — UI para editar `config_empresa` JSONB (logo, NIF, contacto, precio hora, dimensiones tablero, kerf, IVA, etc). Link en sidebar. Cambios impactan en PDF y portal cliente.
+
+**2. Mini 5.1 PDF etiquetas QR** — `qrcode@1.5.4` + nuevo route `/api/piezas/armario/[armarioId]/etiquetas` que genera PDF A4 con QR + dimensiones + nombre pieza de cada unidad física. Botón "🖨️ Etiquetas QR PDF" en la sección piezas.
+
+**3. Capa 7.3 Herraje unión módulos apilados** — `calcularLineas` en presupuestos ahora detecta `particiones_verticales > 1` y añade línea de herraje de unión (cantidad = N−1 × 4 por defecto) si `config_empresa.herraje_union_default_id` está configurado. Nueva sección en `/app/ajustes` para configurarlo.
+
+**4. Capa 6.5 Asistente determinista optimización** — `analizarOptimizacion()` analiza piezas vs tablero útil y genera sugerencias concretas (reducir armario X mm, aumentar particiones, usar tablero mayor) con severidades crítica/importante/menor. Sección nueva en `/app/proyectos/[id]/nesting`.
+
+**5. Capa 4.6 Plano 2D en planta** — Migración `030_armarios_plano.sql` añade `plano_x_mm`, `plano_y_mm`, `plano_rotacion` a armarios. Componente `Plano2D` en `/app/proyectos/[id]/estancias/[estanciaId]` con SVG vista superior (estancia como rectángulo con cotas + armarios como rectángulos coloreados). Tabla de edición de posiciones debajo.
+
+**6. Capa 6.2 Drag&drop nesting** — Componente client `InteractiveTablero` con pointer events sobre SVG. Arrastra cada pieza dentro del tablero (clamp en bordes), guarda al soltar vía `moverPiezaEnTablero` action. Toast al guardar.
+
+**7. Capa 4.4 Editor 3D interactivo** — `Armario3DInteractivo` permite click en módulo para seleccionar (resalta en naranja con emissive). Toolbar flotante con botones ← → ✕ para mover/eliminar. Sustituye el 3D estático.
+
+---
+
 ### Capa 4.5 — Módulos estándar + Auto-layout "Proponer diseño" · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -458,10 +479,16 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 4.2** (2026-04-23): vista 3D real con Three.js + R3F. ✅
 - **Capa 4.3** (2026-04-23): estancias como nivel entre proyecto y armarios + tipo_instalacion + margen_tapeta. ✅
 - **Capa 4.5** (2026-04-23): tipos estándar + botón "Proponer diseño" con auto-layout. ✅
-- **Próximas iteraciones** (orden recomendado):
-  - **Capa 4.4** — drag&drop 3D interactivo (mover módulos con el ratón en el canvas).
-  - **Capa 4.6** — plano 2D en planta de la estancia con armarios como rectángulos.
-  - **Capa 13** — rediseño UI v2 (deuda registrada en memoria persistente).
+- **Capa 4.4** (2026-04-23): editor 3D interactivo (click + toolbar flotante). ✅
+- **Capa 4.6** (2026-04-23): plano 2D en planta de la estancia (vista superior). ✅
+- **Capa 6.2** (2026-04-23): drag&drop piezas en plano de corte (nesting). ✅
+- **Capa 6.5** (2026-04-23): asistente determinista optimización dimensiones. ✅
+- **Capa 7.3** (2026-04-23): herraje unión módulos apilados en presupuestos. ✅
+- **Mini 5.1** (2026-04-23): PDF etiquetas QR A4 por armario. ✅
+- **/app/ajustes** (2026-04-23): editor UI de config_empresa completo. ✅
+- **Pendiente**:
+  - **Capa 13** — rediseño UI v2 (deuda registrada en memoria persistente, requiere sesión dedicada).
+  - **Capa 11 extendido** — asistente IA Claude (el determinista está; LLM con explicaciones humanas queda opcional).
 - **Iteraciones opcionales pendientes**:
   - **Capa 6.2** — drag&drop manual sobre plano de corte nesting.
   - **Capa 6.3 extendido** — herraje de unión específico al facturar módulos apilados.
