@@ -6,6 +6,36 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 3 — Tipos de módulo · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+🌐 UI en prod: https://gpto-psi.vercel.app/app/tipos-modulo — plantillas paramétricas con fórmulas estructuradas, preview de dimensiones calculadas, herrajes asociados.
+
+**Demo cargada**
+- 2 tipos: "Módulo base 60×70×40" (5 piezas: 2 laterales, suelo, techo, trasera, frontal; 4 bisagras) y "Colgador alto 100×200×55".
+- Preview en vivo calcula cada pieza: ej. frontal del módulo base con grosor 16mm → `600 + (-2)×16 = 568 mm` de largo.
+
+**Migraciones aplicadas**
+- `011_tipos_modulo.sql` — `tipos_modulo` + `tipo_modulo_piezas` + `tipo_modulo_herrajes`. Constraints de coherencia (`fuente='fijo' ⇔ valor_fijo_mm NOT NULL`). Trigger autofill_empresa en tipos_modulo.
+- `012_tipos_modulo_rls.sql` — RLS. Las tablas hijas (piezas, herrajes) usan policies `EXISTS` sobre `tipos_modulo` padre (heredan empresa_id a través de la FK).
+
+**Decisiones tuyas aplicadas**
+- **1a fórmulas**: 4 campos estructurados por dimensión (`fuente`, `ajuste_mm`, `ajuste_grosores`, `valor_fijo_mm`). Sin eval de strings. Tu ejemplo (frontal = ancho − 2×grosor) es exactamente: `fuente='ancho'`, `ajuste_grosores=-2`.
+- **2a default**: `tipos_modulo.referencia_tablero_default_id UUID` (FK opcional).
+- **3a horas fijas**: `horas_fabricacion_default NUMERIC(5,2)`. Capa 9 (producción) registrará reales para comparar con estimaciones.
+
+**UI destacable**
+- **7 presets de pieza** que autocompletan las fórmulas: Frontal / Puerta, Lateral, Balda, Suelo-techo (dos variantes), Trasera, Personalizado. Botones client-side en `pieza-form.tsx`.
+- **Preview en vivo**: cada pieza muestra fórmula legible (ej: `ancho − 2·grosor`) y el resultado numérico con los defaults del tipo.
+- Fuente="fijo" desbloquea el campo `valor_fijo_mm`; constraint BD rechaza el valor si no hay coherencia.
+- Sección herrajes: asociación N:M con cálculo de coste unitario × cantidad.
+
+**Helper reutilizable**
+`calcularDimension()` en `src/lib/tipos/tipos_modulo.ts` — la función que Capa 4 (configurador) llamará con medidas reales del usuario para generar la lista de piezas físicas.
+
+---
+
 ### Capa 2 — Catálogo · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -139,14 +169,21 @@ supabase/migrations/005_seed.sql          empresa MAZOR
 
 ---
 
-## Siguiente iteración: Capa 3 — Biblioteca `tipos_modulo`
+## Siguiente iteración: Capa 4 — Configurador 2D+3D
 
-Capa 3 introduce los tipos de módulo base que el configurador 3D usará como plantillas:
-- Un tipo_modulo es una plantilla (ej: "Módulo cajonera 3 cajones 60x70", "Módulo colgador 100cm").
-- Define dimensiones default, qué piezas lleva, qué herrajes estándar, cómo se factura el tiempo de mano de obra.
-- Las instancias concretas (con medidas específicas) se crearán en Capa 4 (configurador).
+Objetivo: pantalla donde Mario (o un operario) configura un armario real:
+1. Elige cliente + proyecto.
+2. Dibuja un armario a medida en 2D (mural) con módulos arrastrables de la biblioteca (Capa 3).
+3. Al guardar, genera automáticamente la lista de piezas con sus dimensiones reales (usando `calcularDimension`).
+4. Render 3D con Three.js + React Three Fiber.
 
-Requiere bloque `CAMBIO DE BD` formal antes de aplicar.
+Requerirá tablas nuevas: `proyectos`, `armarios`, `modulos_armario`. Bloque `CAMBIO DE BD` formal cuando toque.
+
+Decisiones pendientes:
+- ¿Proyecto tiene múltiples armarios o 1:1?
+- ¿Estado del proyecto (borrador / presupuestado / aceptado / en fabricación)?
+- ¿Los módulos en un armario se alinean automáticamente o el usuario posiciona libremente?
+- ¿Se renderiza 3D real o solo 2D con cota?
 
 ---
 
@@ -186,4 +223,6 @@ Requiere bloque `CAMBIO DE BD` formal antes de aplicar.
 - **Capa 1** ✅ **CERRADA**.
 - **Capa 2** (2026-04-23): catálogo completo (6 entidades CRUD) + trigger autofill empresa_id.
 - **Capa 2** ✅ **CERRADA**.
-- **Capa 3** (siguiente) — biblioteca tipos_modulo.
+- **Capa 3** (2026-04-23): tipos_modulo con fórmulas estructuradas + piezas + herrajes + presets UI + preview.
+- **Capa 3** ✅ **CERRADA**.
+- **Capa 4** (siguiente) — configurador 2D+3D (Three.js + R3F).
