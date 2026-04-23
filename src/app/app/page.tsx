@@ -70,6 +70,17 @@ export default async function AppHomePage() {
             Plantillas paramétricas para el configurador.
           </p>
         </Link>
+        <Link
+          href="/app/proyectos"
+          className="rounded-xl border border-zinc-200 bg-white p-5 transition hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+        >
+          <h2 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            Proyectos →
+          </h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Configurar armarios de clientes.
+          </p>
+        </Link>
         <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
             Configurador 3D
