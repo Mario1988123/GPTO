@@ -92,6 +92,17 @@ export default async function AppHomePage() {
             Almacén de retales reutilizables.
           </p>
         </Link>
+        <Link
+          href="/app/presupuestos"
+          className="rounded-xl border border-zinc-200 bg-white p-5 transition hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+        >
+          <h2 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            Presupuestos →
+          </h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Cálculo con IVA, descuentos y mano de obra.
+          </p>
+        </Link>
         <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
             Configurador 3D

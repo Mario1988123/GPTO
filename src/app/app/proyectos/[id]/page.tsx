@@ -40,6 +40,14 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
       <div className="mt-2 flex items-baseline justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">{proyecto.nombre}</h1>
         <div className="flex items-center gap-3">
+          <form action={async () => { "use server"; const { crearBorrador } = await import("../presupuestos-actions"); await crearBorrador(id); }}>
+            <button
+              type="submit"
+              className="rounded-md border border-emerald-300 bg-white px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-zinc-950 dark:text-emerald-300"
+            >
+              Calcular presupuesto →
+            </button>
+          </form>
           <Link
             href={`/app/proyectos/${id}/nesting`}
             className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900"
