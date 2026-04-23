@@ -6,6 +6,25 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 11 — Informes · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+- 🌐 `/app/informes` con dashboard de métricas del negocio últimos 12 meses.
+- Sin BD nueva — todas agregaciones sobre tablas existentes.
+
+**Secciones**
+- **4 KPIs** arriba: Facturación 12m, Conversión presupuestos (%), Clientes activos, Pipeline (presupuestos enviados sin respuesta).
+- **Gráfico barras** Ventas por mes (12 meses) con barra destacada para mes actual y tooltip en hover.
+- **Top 5 clientes** por facturación con barras proporcionales.
+- **Estado de proyectos**: barra horizontal dividida por estado + leyenda con conteo.
+- **Recortes/Merma**: m² aprovechados vs descartados vs total.
+- **Stock bajo**: herrajes con ≤10 unidades, alerta roja si ≤2.
+
+**Link en sidebar** con icono `BarChart3`.
+
+---
+
 ### Capa 9 — Producción kanban · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -322,8 +341,9 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 7.2** (2026-04-23): PDF descargable del presupuesto. ✅
 - **Capa 8** (2026-04-23): pedidos 1:1 con presupuestos + rediseño UI global (sidebar + dashboard). ✅
 - **Capa 9** (2026-04-23): producción kanban de piezas con filtro por pedido. ✅
-- **Capa 10** (siguiente) — trazabilidad pública mejorada (actualmente `/t/[qr]` simple; añadir timeline estados).
-- **Capa 11** (luego) — informes (ventas por mes, tiempo medio por módulo, top clientes, merma promedio).
+- **Capa 11** (2026-04-23): informes con KPIs + gráficos ventas + top clientes + merma + stock. ✅
+- **Capa 10** (siguiente) — trazabilidad pública mejorada (`/t/[qr]` con timeline estados + timestamps).
+- **Capa 12** (luego) — portal cliente final (ver su proyecto sin login vía token).
 - **Capa 6.2** (opcional) — drag&drop manual sobre el plano de corte.
 - **Capa 6.5** (opcional) — asistente determinista de optimización dimensiones.
 - **Capa 4.2** (paralelo opcional) — render 3D con Three.js + R3F.
