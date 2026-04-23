@@ -12,6 +12,7 @@ import {
 import { ToastFromSearchParams } from "../../../../catalogo/shared";
 import { AnadirModuloForm } from "./anadir-modulo";
 import { Armario3D } from "./armario-3d";
+import { Armario3DInteractivo } from "./armario-3d-interactivo";
 import { ProponerDisenoForm } from "./proponer-diseno";
 import { cambiarEstadoPieza, regenerarPiezasArmario } from "../../../piezas-actions";
 import { actualizarDatosInstalacion } from "../../../estancias-actions";
@@ -137,13 +138,13 @@ export default async function ConfiguradorArmarioPage({
         </div>
       </section>
 
-      {/* Vista 3D */}
+      {/* Vista 3D interactiva */}
       <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-lg font-medium">Vista 3D</h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Arrastra para rotar · rueda para zoom</p>
+          <h2 className="text-lg font-medium">Vista 3D interactiva</h2>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Click en módulo para seleccionar · arrastra fondo para rotar · rueda para zoom</p>
         </div>
-        <Armario3D
+        <Armario3DInteractivo
           armario_ancho_mm={armario.ancho_total_mm}
           armario_alto_mm={armario.alto_total_mm}
           armario_fondo_mm={armario.fondo_mm}
@@ -158,6 +159,9 @@ export default async function ConfiguradorArmarioPage({
             particiones: m.particiones_verticales ?? 1,
             color: ["#93c5fd","#86efac","#fcd34d","#d8b4fe","#fda4af","#67e8f9","#bef264","#f0abfc"][i % 8],
           }))}
+          actionMoverArriba={async (id) => { "use server"; await moverModulo(proyectoId, armarioId, id, "arriba"); }}
+          actionMoverAbajo={async (id) => { "use server"; await moverModulo(proyectoId, armarioId, id, "abajo"); }}
+          actionEliminar={async (id) => { "use server"; await eliminarModulo(proyectoId, armarioId, id); }}
         />
       </section>
 
