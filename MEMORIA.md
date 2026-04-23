@@ -6,6 +6,32 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 8 — Pedidos + rediseño UI global · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Capa 8 — Pedidos**
+- 🌐 `/app/pedidos` listado + `/app/pedidos/[id]` detalle.
+- Relación 1:1 con presupuestos (UNIQUE `presupuesto_id`).
+- Al marcar presupuesto como **aceptado** → auto-genera pedido `PED-2026-0001` y proyecto pasa a `confirmado`.
+- Estados pedido: `pendiente / en_fabricacion / fabricado / entregado / cancelado`.
+- Sincroniza estado del proyecto: `en_fabricacion/fabricado → proyecto en_fabricacion`; `entregado → proyecto entregado`.
+
+**Migraciones**
+- `022_pedidos.sql` — tabla con UNIQUE presupuesto_id, importe copiado.
+- `023_pedidos_rls.sql` — RLS empresa directa.
+
+**Rediseño UI global**
+- Nuevo layout con **sidebar 240px** (desktop) con iconos `lucide-react` y avatar usuario con inicial.
+- Móvil: nav horizontal scrollable.
+- Dashboard con:
+  - Saludo personalizado.
+  - 4 stat cards (clientes, proyectos, presupuestos, pedidos).
+  - Banner gradiente con total facturado.
+  - 6 NavCards de acceso a módulos.
+  - Últimos 5 proyectos y presupuestos en columnas.
+
+---
+
 ### Capa 7.2 — PDF del presupuesto · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -277,8 +303,9 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 6.1** (2026-04-23): nesting automático MaxRects + almacén de recortes con validación. ✅
 - **Capa 6.3** (2026-04-23): particiones verticales de módulos (apilar módulos grandes). ✅
 - **Capa 7.1** (2026-04-23): presupuestos con líneas editables + emisión con snapshot + numeración automática. ✅
-- **Capa 7.2** (2026-04-23): PDF descargable del presupuesto con @react-pdf/renderer. ✅
-- **Capa 8** (siguiente) — pedidos (aceptar presupuesto → genera pedido → estado producción).
+- **Capa 7.2** (2026-04-23): PDF descargable del presupuesto. ✅
+- **Capa 8** (2026-04-23): pedidos 1:1 con presupuestos + rediseño UI global (sidebar + dashboard). ✅
+- **Capa 9** (siguiente) — producción kanban por estado de pieza/pedido.
 - **Capa 6.2** (opcional) — drag&drop manual sobre el plano de corte.
 - **Capa 6.5** (opcional) — asistente determinista de optimización dimensiones.
 - **Capa 4.2** (paralelo opcional) — render 3D con Three.js + R3F.
