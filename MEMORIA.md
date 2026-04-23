@@ -6,6 +6,36 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 4.2 + 4.3 — Vista 3D + Estancias · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Capa 4.3 — Estancias (nuevo nivel jerárquico)**
+- Nueva tabla `estancias` entre proyecto y armarios. Un proyecto ahora tiene varias estancias (vestidor, cocina, pasillo, dormitorio…).
+- 10 tipos predefinidos con emojis: 👔 vestidor, 🚪 armario pasillo, 🍳 cocina, 🍽️ comedor, 🛏️ dormitorio, 🛁 baño, 🏠 entrada, 🛋️ salón, 💼 despacho, 📦 otro.
+- Dimensiones opcionales de la estancia (largo/ancho/alto) para plano 2D futuro.
+- Migración automática: cada proyecto existente recibe una estancia "Principal" con sus armarios dentro.
+- Armarios ganan `tipo_instalacion` (empotrado/suelto) + `margen_tapeta_mm` (0-50mm).
+- `/app/proyectos/[id]` ahora muestra armarios agrupados por estancia.
+- `/app/proyectos/[id]/estancias/[estanciaId]` con detalle + form crear armario con tipo instalación.
+
+**Capa 4.2 — Vista 3D real con Three.js + R3F**
+- Deps: `three@0.184`, `@react-three/fiber@9.6`, `@react-three/drei@10.7`, `@types/three` dev.
+- Componente client `Armario3D`:
+  - `Canvas` con `OrbitControls` (arrastrar rotar, rueda zoom).
+  - Hueco del armario wireframe. Si empotrado: se dibuja también hueco exterior con margen tapeta en color ámbar.
+  - Módulos como `Box` opacos coloreados con edges negros.
+  - Labels flotantes con `Text` de drei.
+  - Líneas horizontales por cada partición vertical del módulo.
+  - Grid infinito 10cm + 1m, iluminación ambiente + direccional.
+  - Escala mm→m (1 unidad R3F = 1 metro).
+- Sección "Vista 3D" en `/app/proyectos/[id]/armarios/[armarioId]`.
+
+**Migraciones**
+- `027_estancias.sql` — tabla + ALTER armarios (estancia_id, tipo_instalacion, margen_tapeta_mm) + migración de datos.
+- `028_estancias_rls.sql` — RLS empresa directa.
+
+---
+
 ### Capa 12 — Portal cliente final · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -393,6 +423,13 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 10** (2026-04-23): trazabilidad `/t/[qr]` con timeline visual + historial de eventos + contacto empresa. ✅
 - **Capa 12** (2026-04-23): portal cliente final `/c/[token]` con progreso, pedido, presupuesto, armarios y contacto. ✅
 - 🎉 **HOJA DE RUTA ORIGINAL COMPLETA** (Capas 0-12) 🎉
+- **Capa 4.2** (2026-04-23): vista 3D real con Three.js + R3F. ✅
+- **Capa 4.3** (2026-04-23): estancias como nivel entre proyecto y armarios + tipo_instalacion + margen_tapeta. ✅
+- **Próximas iteraciones** (orden recomendado):
+  - **Capa 4.4** — drag&drop 3D interactivo (mover módulos con el ratón en el canvas).
+  - **Capa 4.5** — módulos estándar proveedor + auto-layout "proponer diseño".
+  - **Capa 4.6** — plano 2D en planta de la estancia con armarios como rectángulos.
+  - **Capa 13** — rediseño UI v2 (deuda registrada en memoria persistente).
 - **Iteraciones opcionales pendientes**:
   - **Capa 6.2** — drag&drop manual sobre plano de corte nesting.
   - **Capa 6.3 extendido** — herraje de unión específico al facturar módulos apilados.
