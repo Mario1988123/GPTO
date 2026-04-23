@@ -6,6 +6,40 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 2 — Catálogo · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+🌐 UI en prod: https://gpto-psi.vercel.app/app/catalogo — 6 CRUDs completos con datos demo ya cargados (2 proveedores, 3 materiales, 3 acabados, 3 referencias de tablero, 2 cantos, 3 herrajes).
+
+**Migraciones aplicadas**
+- `008_catalogo.sql` — 6 tablas (proveedores, materiales, acabados, referencias_tablero, cantos, herrajes) con constraints, índices, triggers updated_at.
+- `009_catalogo_rls.sql` — RLS ON en las 6 tablas, 24 policies (4 por tabla, patrón idéntico).
+- `010_autofill_empresa.sql` — trigger BEFORE INSERT autocompleta `empresa_id` desde la sesión. **Fix crítico**: sin este trigger, las INSERTs desde server actions fallaban con "new row violates row-level security policy". Aplicado también a `usuarios` y `clientes` retroactivamente.
+
+**UI (`src/app/app/catalogo/`)**
+- `page.tsx` — índice con tarjetas + contadores activos por entidad.
+- `shared.tsx` — helpers (Field, Select, Textarea, SubmitButton, ActivoPill, euros, ToastFromSearchParams).
+- 6 carpetas por entidad con patrón `actions.ts + page.tsx + form.tsx + nuevo/page.tsx + [id]/page.tsx`.
+- `proveedores`, `materiales`, `acabados`: CRUDs simples.
+- `referencias-tablero`: CRUD con FK selects a material+acabado (obligatorios) y proveedor (opcional).
+- `cantos`: FK selects opcionales a acabado, grosor, proveedor. Regla `__ninguna__` para valores vacíos.
+- `herrajes`: categoría (bisagra/tirador/guía/...) + precio_unidad + stock.
+- Toasts verde/rojo 3s con sonner en todas las acciones.
+
+**Decisiones de Mario (1a 2b 3b 4a 5a)**
+- `config_empresa` sigue como JSONB en empresas.
+- `materiales` con categoría (tablero / madera_maciza / dm / melamina / contrachapado / otro).
+- `proveedores` en tabla separada con FK opcional en referencias/cantos/herrajes.
+- `herrajes` completo: tipo + precio_unidad + stock_disponible.
+- Soft delete `activo` en las 6 tablas.
+
+**Unidades fijas**
+- Grosor: mm (INTEGER).
+- Precios: EUR `NUMERIC(10,2)` — `precio_m2`, `precio_ml`, `precio_unidad`.
+
+---
+
 ### Capa 1 — Clientes · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -105,11 +139,14 @@ supabase/migrations/005_seed.sql          empresa MAZOR
 
 ---
 
-## Siguiente iteración: Capa 2 — Catálogo
+## Siguiente iteración: Capa 3 — Biblioteca `tipos_modulo`
 
-Tablas previstas: `materiales`, `acabados`, `referencias_tablero` (núcleo), `cantos`, `herrajes`, `config_empresa` (ya embebida en `empresas.config_empresa` JSONB — revisar si separar).
+Capa 3 introduce los tipos de módulo base que el configurador 3D usará como plantillas:
+- Un tipo_modulo es una plantilla (ej: "Módulo cajonera 3 cajones 60x70", "Módulo colgador 100cm").
+- Define dimensiones default, qué piezas lleva, qué herrajes estándar, cómo se factura el tiempo de mano de obra.
+- Las instancias concretas (con medidas específicas) se crearán en Capa 4 (configurador).
 
-Requiere bloque `CAMBIO DE BD` formal antes de aplicar (Mario debe aprobar).
+Requiere bloque `CAMBIO DE BD` formal antes de aplicar.
 
 ---
 
@@ -147,4 +184,6 @@ Requiere bloque `CAMBIO DE BD` formal antes de aplicar (Mario debe aprobar).
 - **Capa 0** ✅ **CERRADA** — base multitenant + auth funcional.
 - **Capa 1** (2026-04-23): clientes CRUD con RLS + soft delete + toasts.
 - **Capa 1** ✅ **CERRADA**.
-- **Capa 2** (siguiente) — catálogo.
+- **Capa 2** (2026-04-23): catálogo completo (6 entidades CRUD) + trigger autofill empresa_id.
+- **Capa 2** ✅ **CERRADA**.
+- **Capa 3** (siguiente) — biblioteca tipos_modulo.
