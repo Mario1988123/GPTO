@@ -6,6 +6,22 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 9 — Producción kanban · ✅ Cerrada
+**Fecha**: 2026-04-23
+
+**Resultado**
+- 🌐 `/app/produccion` — vista kanban con 4 columnas (pendiente / cortada / producida / entregada).
+- Cada pieza aparece como tarjeta con nombre, cantidad, dimensiones, proyecto+armario y botones para mover a otros estados.
+- Filtro por pedido activo (dropdown) o "Todos los pedidos activos".
+- Sin migración BD: usa `piezas_modulo.estado` ya existente de Capa 5.
+- Link al QR público `/t/[qr]` desde cada tarjeta.
+- Link "Producción" añadido al sidebar con icono Hammer.
+
+**Flujo completo implementado end-to-end**
+1. Login → 2. Crear cliente → 3. Crear proyecto → 4. Configurar armarios/módulos → 5. Explosionar piezas → 6. Ejecutar nesting → 7. Calcular presupuesto → 8. Emitir y descargar PDF → 9. Marcar aceptado (genera pedido) → 10. Trasladar pedido a "en fabricación" → 11. Kanban de piezas → 12. Marcar piezas como cortadas/producidas/entregadas → 13. Estado proyecto se actualiza automáticamente.
+
+---
+
 ### Capa 8 — Pedidos + rediseño UI global · ✅ Cerrada
 **Fecha**: 2026-04-23
 
@@ -305,7 +321,9 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 7.1** (2026-04-23): presupuestos con líneas editables + emisión con snapshot + numeración automática. ✅
 - **Capa 7.2** (2026-04-23): PDF descargable del presupuesto. ✅
 - **Capa 8** (2026-04-23): pedidos 1:1 con presupuestos + rediseño UI global (sidebar + dashboard). ✅
-- **Capa 9** (siguiente) — producción kanban por estado de pieza/pedido.
+- **Capa 9** (2026-04-23): producción kanban de piezas con filtro por pedido. ✅
+- **Capa 10** (siguiente) — trazabilidad pública mejorada (actualmente `/t/[qr]` simple; añadir timeline estados).
+- **Capa 11** (luego) — informes (ventas por mes, tiempo medio por módulo, top clientes, merma promedio).
 - **Capa 6.2** (opcional) — drag&drop manual sobre el plano de corte.
 - **Capa 6.5** (opcional) — asistente determinista de optimización dimensiones.
 - **Capa 4.2** (paralelo opcional) — render 3D con Three.js + R3F.
