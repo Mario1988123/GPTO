@@ -19,6 +19,17 @@ export async function actualizarPlanoArmario(
 
   const s = await createClient();
 
+  // Guard: proyecto cerrado bloquea movimiento de armarios en el plano.
+  const { data: proyecto } = await s
+    .from("proyectos")
+    .select("estado, cerrado_at")
+    .eq("id", proyectoId)
+    .maybeSingle<{ estado: string; cerrado_at: string | null }>();
+  if (proyecto) {
+    const cerrado = proyecto.cerrado_at != null || proyecto.estado === "entregado" || proyecto.estado === "cancelado";
+    if (cerrado) throw new Error("Proyecto cerrado: reábrelo antes de mover armarios.");
+  }
+
   // Clamp a las dimensiones de la estancia (el armario no puede salirse del recinto)
   const [{ data: armario }, { data: estancia }] = await Promise.all([
     s.from("armarios").select("ancho_total_mm, fondo_mm").eq("id", armarioId).maybeSingle<{ ancho_total_mm: number; fondo_mm: number }>(),
@@ -42,6 +53,7 @@ export async function actualizarPlanoArmario(
   }).eq("id", armarioId);
   if (error) redirect(`/app/proyectos/${proyectoId}/estancias/${estanciaId}?error=${encodeURIComponent(error.message)}`);
 
+  // Sin redirect final: permite drag&drop sin navegación/parpadeo.
+  // El componente cliente usa startTransition + revalidate para refrescar.
   revalidatePath(`/app/proyectos/${proyectoId}/estancias/${estanciaId}`);
-  redirect(`/app/proyectos/${proyectoId}/estancias/${estanciaId}?ok=actualizado`);
 }

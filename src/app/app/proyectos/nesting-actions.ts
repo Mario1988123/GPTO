@@ -30,10 +30,12 @@ export async function ejecutarNesting(proyectoId: string) {
   const kerf = Number(cfg.kerf_mm ?? 3);
 
   // 2. Todas las piezas del proyecto (via modulo -> armario -> proyecto).
-  let { data: piezas, error } = await s
+  const piezasInicial = await s
     .from("piezas_modulo")
     .select("id, cantidad, largo_mm, ancho_mm, grosor_mm, respeta_veta, referencia_tablero_id, modulos_armario!inner(armario_id, armarios!inner(proyecto_id))")
     .eq("modulos_armario.armarios.proyecto_id", proyectoId);
+  let piezas = piezasInicial.data;
+  const error = piezasInicial.error;
   if (error) {
     redirect(`/app/proyectos/${proyectoId}/nesting?error=${encodeURIComponent(error.message)}`);
   }

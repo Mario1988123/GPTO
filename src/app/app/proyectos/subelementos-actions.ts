@@ -5,6 +5,18 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { TipoSubelemento } from "@/lib/tipos/proyectos";
 
+async function assertProyectoEditableSub(proyectoId: string) {
+  const s = await createClient();
+  const { data } = await s
+    .from("proyectos")
+    .select("estado, cerrado_at")
+    .eq("id", proyectoId)
+    .maybeSingle<{ estado: string; cerrado_at: string | null }>();
+  if (!data) return; // si no hay proyecto, deja pasar (RLS ya habrá filtrado)
+  const cerrado = data.cerrado_at != null || data.estado === "entregado" || data.estado === "cancelado";
+  if (cerrado) throw new Error("Proyecto cerrado: reábrelo antes de editar.");
+}
+
 const TIPOS_VALIDOS: TipoSubelemento[] = [
   "cajon", "balda_fija", "balda_regulable", "puerta_abatible", "puerta_corredera",
   "puerta_plegable", "barra_colgar", "hueco_abierto", "tapeta_ciega", "espejo",
@@ -63,6 +75,7 @@ export async function crearSubelemento(
   moduloId: string,
   fd: FormData,
 ) {
+  await assertProyectoEditableSub(proyectoId);
   const s = await createClient();
 
   const tipo = String(fd.get("tipo") ?? "") as TipoSubelemento;
@@ -103,6 +116,7 @@ export async function actualizarSubelemento(
   subelementoId: string,
   fd: FormData,
 ) {
+  await assertProyectoEditableSub(proyectoId);
   const s = await createClient();
 
   const update: Record<string, unknown> = {
@@ -136,6 +150,7 @@ export async function eliminarSubelemento(
   armarioId: string,
   subelementoId: string,
 ) {
+  await assertProyectoEditableSub(proyectoId);
   const s = await createClient();
   const { error } = await s.from("modulo_subelementos").delete().eq("id", subelementoId);
   if (error) {
@@ -152,6 +167,7 @@ export async function moverPosicionModulo(
   posicion_x_mm: number,
   posicion_y_mm: number,
 ) {
+  await assertProyectoEditableSub(proyectoId);
   const s = await createClient();
   const { error } = await s.from("modulos_armario")
     .update({ posicion_x_mm, posicion_y_mm })
@@ -174,6 +190,7 @@ export async function generarCajones(
   n: number,
   alturasMm: number[] | null,
 ) {
+  await assertProyectoEditableSub(proyectoId);
   const s = await createClient();
   const { data: mod } = await s
     .from("modulos_armario")
@@ -232,6 +249,7 @@ export async function actualizarConfiguracionModulo(
   moduloId: string,
   fd: FormData,
 ) {
+  await assertProyectoEditableSub(proyectoId);
   const s = await createClient();
   const parseOpt = (k: string): number | null => {
     const v = String(fd.get(k) ?? "").trim();
@@ -261,6 +279,7 @@ export async function actualizarLedModulo(
   moduloId: string,
   fd: FormData,
 ) {
+  await assertProyectoEditableSub(proyectoId);
   const s = await createClient();
   const tiene = fd.get("tiene_led_rebaje") === "on" || fd.get("tiene_led_rebaje") === "true";
   const color = String(fd.get("led_color_hex") ?? "").trim() || null;

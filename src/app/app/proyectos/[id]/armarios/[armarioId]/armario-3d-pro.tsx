@@ -424,14 +424,14 @@ function Subelementos({
 
   // Espacio vertical interior disponible (entre suelo y techo del módulo)
   // yInt0 = -mhInt/2 (suelo interior), sube hacia arriba
-  let yCursorMm = 0;
-
-  const elementos = interior.map((s, idx) => {
+  const elementos = interior.reduce<
+    { sub: typeof interior[number]; idx: number; altoMm: number; yStartMm: number }[]
+  >((acc, s, idx) => {
     const altoMm = s.alto_mm && s.alto_mm > 0 ? s.alto_mm : altoAutoMm;
-    const yStart = yCursorMm;
-    yCursorMm += altoMm;
-    return { sub: s, idx, altoMm, yStartMm: yStart };
-  });
+    const yStart = acc.length === 0 ? 0 : acc[acc.length - 1].yStartMm + acc[acc.length - 1].altoMm;
+    acc.push({ sub: s, idx, altoMm, yStartMm: yStart });
+    return acc;
+  }, []);
 
   return (
     <>

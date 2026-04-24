@@ -4,7 +4,6 @@ import { Suspense } from "react";
 import { ArrowLeft, Trash2, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
-  actualizarArmario,
   anadirModulo,
   eliminarArmario,
   eliminarModulo,

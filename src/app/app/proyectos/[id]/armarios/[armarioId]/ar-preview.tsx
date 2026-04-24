@@ -331,7 +331,7 @@ export function ARPreview(props: Props) {
               </div>
             ) : (
               <p className="mt-3 text-[11px] text-slate-500">
-                Los modelos gratuitos de HuggingFace pueden tardar 20-30 segundos la primera vez (están "dormidos"). Si falla, vuelve a pulsar.
+                Los modelos gratuitos de HuggingFace pueden tardar 20-30 segundos la primera vez (están &quot;dormidos&quot;). Si falla, vuelve a pulsar.
               </p>
             )}
           </div>

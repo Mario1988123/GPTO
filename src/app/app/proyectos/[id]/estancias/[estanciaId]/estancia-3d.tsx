@@ -23,6 +23,7 @@ type ArmarioEnPlano = {
   plano_x_mm: number;
   plano_y_mm: number;
   plano_rotacion: 0 | 90 | 180 | 270;
+  tipo_instalacion?: "empotrado" | "suelto";
 };
 
 export function Estancia3D({
@@ -379,17 +380,31 @@ function ArmarioEnEstancia({
   const x = armario.plano_x_mm * k;
   const z = armario.plano_y_mm * k;
   const rot = ((armario.plano_rotacion ?? 0) * Math.PI) / 180;
+  const esEmpotrado = armario.tipo_instalacion === "empotrado";
 
   return (
     <group position={[x + W / 2, H / 2, z + D / 2]} rotation={[0, -rot, 0]}>
+      {/* Cuerpo principal (ligeramente diferente si es empotrado) */}
       <mesh castShadow receiveShadow>
         <boxGeometry args={[W, H, D]} />
-        <meshStandardMaterial color="#e4d4c0" roughness={0.5} metalness={0.04} />
+        <meshStandardMaterial
+          color={esEmpotrado ? "#d6c0a0" : "#e4d4c0"}
+          roughness={0.5}
+          metalness={0.04}
+        />
         <Edges color="#2e2a26" lineWidth={1.2} />
       </mesh>
+      {/* Tapeta frontal (marca el frente visible) */}
+      <mesh position={[0, 0, D / 2 + 0.005]}>
+        <planeGeometry args={[W * 0.98, H * 0.98]} />
+        <meshStandardMaterial color={esEmpotrado ? "#8b6f4e" : "#7a5c3f"} roughness={0.35} metalness={0.08} />
+      </mesh>
       <Html position={[0, H / 2 + 0.1, 0]} center distanceFactor={6} zIndexRange={[0, 10]}>
-        <div className="pointer-events-none whitespace-nowrap rounded bg-foreground/90 px-1.5 py-0.5 text-[10px] font-semibold text-background">
+        <div className="pointer-events-none flex items-center gap-1 whitespace-nowrap rounded bg-foreground/90 px-1.5 py-0.5 text-[10px] font-semibold text-background">
           {armario.nombre}
+          {esEmpotrado && (
+            <span className="rounded-sm bg-amber-400 px-1 text-[9px] font-bold text-amber-950">EMP</span>
+          )}
         </div>
       </Html>
     </group>

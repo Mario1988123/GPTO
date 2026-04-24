@@ -190,6 +190,7 @@ export default async function DetalleEstanciaPage({
             plano_x_mm: a.plano_x_mm,
             plano_y_mm: a.plano_y_mm,
             plano_rotacion: a.plano_rotacion,
+            tipo_instalacion: a.tipo_instalacion,
           }))}
         />
       </section>
