@@ -7,6 +7,18 @@ import type { TipoEstancia } from "@/lib/tipos/estancias";
 
 const TIPOS: TipoEstancia[] = ["vestidor", "armario_pasillo", "cocina", "comedor", "dormitorio", "bano", "entrada", "salon", "despacho", "otro"];
 
+async function assertProyectoEditableEst(proyectoId: string) {
+  const s = await createClient();
+  const { data } = await s
+    .from("proyectos")
+    .select("estado, cerrado_at")
+    .eq("id", proyectoId)
+    .maybeSingle<{ estado: string; cerrado_at: string | null }>();
+  if (!data) throw new Error("Proyecto no encontrado.");
+  const cerrado = data.cerrado_at != null || data.estado === "entregado" || data.estado === "cancelado";
+  if (cerrado) throw new Error("Proyecto cerrado: reábrelo antes de editar.");
+}
+
 function payload(fd: FormData) {
   const nombre = String(fd.get("nombre") ?? "").trim();
   if (!nombre) throw new Error("Nombre obligatorio.");
@@ -34,17 +46,43 @@ function payload(fd: FormData) {
 }
 
 export async function crearEstancia(proyectoId: string, fd: FormData) {
+  await assertProyectoEditableEst(proyectoId);
   const s = await createClient();
   const { data: max } = await s.from("estancias").select("orden").eq("proyecto_id", proyectoId).order("orden", { ascending: false }).limit(1).maybeSingle();
   const orden = ((max?.orden ?? -1) as number) + 1;
 
-  const { data, error } = await s.from("estancias").insert({ ...payload(fd), proyecto_id: proyectoId, orden }).select("id").single();
+  const datosEst = payload(fd);
+  const { data, error } = await s.from("estancias").insert({ ...datosEst, proyecto_id: proyectoId, orden }).select("id").single();
   if (error) redirect(`/app/proyectos/${proyectoId}?error=${encodeURIComponent(error.message)}`);
+
+  // Si se proporcionaron dimensiones, crear también la geometría rectangular
+  // automáticamente — así el plano 2D ya sale bien sin pasos adicionales.
+  const largo = datosEst.largo_mm as number | null | undefined;
+  const ancho = datosEst.ancho_mm as number | null | undefined;
+  const alto = datosEst.alto_mm as number | null | undefined;
+  if (largo && ancho) {
+    await s.from("estancia_geometria").upsert(
+      {
+        estancia_id: data!.id,
+        tipo: "rectangular",
+        puntos: [
+          { x: 0, y: 0 },
+          { x: largo, y: 0 },
+          { x: largo, y: ancho },
+          { x: 0, y: ancho },
+        ],
+        alto_pared_mm: alto ?? 2500,
+      },
+      { onConflict: "estancia_id" },
+    );
+  }
+
   revalidatePath(`/app/proyectos/${proyectoId}`);
   redirect(`/app/proyectos/${proyectoId}/estancias/${data!.id}?ok=creado`);
 }
 
 export async function actualizarEstancia(proyectoId: string, estanciaId: string, fd: FormData) {
+  await assertProyectoEditableEst(proyectoId);
   const s = await createClient();
   const { error } = await s.from("estancias").update(payload(fd)).eq("id", estanciaId);
   if (error) redirect(`/app/proyectos/${proyectoId}/estancias/${estanciaId}?error=${encodeURIComponent(error.message)}`);
@@ -54,6 +92,7 @@ export async function actualizarEstancia(proyectoId: string, estanciaId: string,
 }
 
 export async function eliminarEstancia(proyectoId: string, estanciaId: string) {
+  await assertProyectoEditableEst(proyectoId);
   const s = await createClient();
   const { error } = await s.from("estancias").delete().eq("id", estanciaId);
   if (error) redirect(`/app/proyectos/${proyectoId}?error=${encodeURIComponent(error.message)}`);
@@ -62,6 +101,7 @@ export async function eliminarEstancia(proyectoId: string, estanciaId: string) {
 }
 
 export async function crearArmarioEnEstancia(proyectoId: string, estanciaId: string, fd: FormData) {
+  await assertProyectoEditableEst(proyectoId);
   const s = await createClient();
 
   const nombre = String(fd.get("nombre") ?? "").trim() || "Armario";

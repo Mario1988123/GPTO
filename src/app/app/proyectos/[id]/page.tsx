@@ -12,16 +12,21 @@ import {
   Plus,
   Boxes,
   Calendar,
+  Lock,
+  Unlock,
+  CheckCircle2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   actualizarProyecto,
   crearArmario,
   eliminarProyecto,
+  reabrirProyecto,
+  cerrarProyecto,
 } from "../actions";
 import { ProyectoForm } from "../proyecto-form";
 import { ToastFromSearchParams } from "../../catalogo/shared";
-import { ESTADOS_PROYECTO, type Armario, type Proyecto } from "@/lib/tipos/proyectos";
+import { ESTADOS_PROYECTO, esProyectoCerrado, type Armario, type Proyecto } from "@/lib/tipos/proyectos";
 import { PageHeader } from "@/components/page-header";
 import { AsistenteIA } from "./asistente-ia";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +72,8 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
     s.from("estancias").select("id, nombre, tipo, orden, largo_mm, ancho_mm, alto_mm").eq("proyecto_id", id).order("orden"),
   ]);
 
+  const cerrado = esProyectoCerrado(proyecto);
+
   const update = async (fd: FormData) => { "use server"; await actualizarProyecto(id, fd); };
   const del = async () => { "use server"; await eliminarProyecto(id); };
   const addArm = async (fd: FormData) => { "use server"; await crearArmario(id, fd); };
@@ -75,6 +82,8 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
     const { crearEstancia } = await import("../estancias-actions");
     await crearEstancia(id, fd);
   };
+  const reabrir = async () => { "use server"; await reabrirProyecto(id); };
+  const cerrar = async () => { "use server"; await cerrarProyecto(id); };
 
   const armariosPorEstancia = new Map<string, Armario[]>();
   for (const a of armarios ?? []) {
@@ -105,6 +114,12 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
             <Badge className={`${ESTADO_VARIANT[proyecto.estado] ?? ""} border-0`}>
               {LBL[proyecto.estado]?.label}
             </Badge>
+            {cerrado && (
+              <Badge className="border-0 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
+                <Lock className="mr-1 h-3 w-3" />
+                Cerrado
+              </Badge>
+            )}
             <Link
               href={`/app/proyectos/${id}/agenda`}
               className={buttonVariants({ variant: "outline", size: "sm" })}
@@ -152,6 +167,29 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
         }
       />
 
+      {cerrado && (
+        <section className="mt-6 flex items-start gap-3 rounded-2xl border border-zinc-300 bg-zinc-100/70 p-4 dark:border-zinc-700 dark:bg-zinc-900/50">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900">
+            <Lock className="h-4 w-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Proyecto cerrado — modo solo lectura</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {proyecto.cerrado_at
+                ? `Cerrado el ${new Date(proyecto.cerrado_at).toLocaleDateString("es-ES")}.`
+                : `Estado ${LBL[proyecto.estado]?.label.toLowerCase()}.`}{" "}
+              Para añadir una ampliación o corregir algo, reábrelo.
+            </p>
+          </div>
+          <form action={reabrir}>
+            <Button type="submit" size="sm" variant="outline">
+              <Unlock className="h-3.5 w-3.5" />
+              Reabrir para ampliación
+            </Button>
+          </form>
+        </section>
+      )}
+
       {/* Asistente IA */}
       <div className="mt-6">
         <AsistenteIA proyectoId={id} />
@@ -183,20 +221,30 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
             <h2 className="mt-0.5 text-lg font-bold tracking-tight">Datos del proyecto</h2>
           </div>
         </div>
-        <ProyectoForm proyecto={proyecto} clientes={clientes ?? []} action={update} submitLabel="Guardar cambios" />
-        <div className="mt-6 border-t border-border pt-5">
-          <form action={del}>
-            <Button
-              type="submit"
-              variant="outline"
-              size="sm"
-              className="border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Eliminar proyecto
-            </Button>
-          </form>
-        </div>
+        <fieldset disabled={cerrado} className={cerrado ? "opacity-60" : ""}>
+          <ProyectoForm proyecto={proyecto} clientes={clientes ?? []} action={update} submitLabel="Guardar cambios" />
+        </fieldset>
+        {!cerrado && (
+          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
+            <form action={cerrar}>
+              <Button type="submit" variant="outline" size="sm">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Marcar como entregado y cerrar
+              </Button>
+            </form>
+            <form action={del}>
+              <Button
+                type="submit"
+                variant="outline"
+                size="sm"
+                className="border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Eliminar proyecto
+              </Button>
+            </form>
+          </div>
+        )}
       </section>
 
       {/* Estancias y armarios */}
@@ -274,8 +322,8 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
         )}
 
         {/* Nueva estancia */}
-        <form action={addEst} className="mt-5 grid gap-3 rounded-xl border border-dashed border-border bg-muted/20 p-4 sm:grid-cols-4">
-          <div className="space-y-1.5 sm:col-span-2">
+        {!cerrado && <form action={addEst} className="mt-5 grid gap-3 rounded-xl border border-dashed border-border bg-muted/20 p-4 sm:grid-cols-6">
+          <div className="space-y-1.5 sm:col-span-3">
             <label className="block text-xs font-semibold text-muted-foreground">Nueva estancia *</label>
             <input
               name="nombre"
@@ -284,7 +332,7 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
               className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15"
             />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 sm:col-span-3">
             <label className="block text-xs font-semibold text-muted-foreground">Tipo</label>
             <select
               name="tipo"
@@ -298,16 +346,31 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
               ))}
             </select>
           </div>
-          <div className="flex items-end">
-            <Button type="submit" className="h-9 w-full">
-              <Plus className="h-4 w-4" />
-              Añadir
-            </Button>
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Largo (mm)</label>
+            <input name="largo_mm" type="number" min="100" defaultValue={4000} className="flex h-9 w-full rounded-md border border-input bg-background px-3 font-mono text-sm shadow-xs" />
           </div>
-        </form>
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Ancho (mm)</label>
+            <input name="ancho_mm" type="number" min="100" defaultValue={3000} className="flex h-9 w-full rounded-md border border-input bg-background px-3 font-mono text-sm shadow-xs" />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Alto (mm)</label>
+            <input name="alto_mm" type="number" min="100" defaultValue={2500} className="flex h-9 w-full rounded-md border border-input bg-background px-3 font-mono text-sm shadow-xs" />
+          </div>
+          <div className="sm:col-span-6">
+            <Button type="submit" className="h-9">
+              <Plus className="h-4 w-4" />
+              Crear estancia y entrar
+            </Button>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Las dimensiones se usan para el plano 2D y el 3D. Puedes editarlas luego dentro de la estancia.
+            </p>
+          </div>
+        </form>}
 
         {/* Armario directo (compat) */}
-        <details className="mt-4 text-xs text-muted-foreground">
+        {!cerrado && <details className="mt-4 text-xs text-muted-foreground">
           <summary className="cursor-pointer font-medium transition hover:text-foreground">
             Crear armario directo (se añade a la primera estancia)
           </summary>
@@ -341,7 +404,7 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
               </Button>
             </div>
           </form>
-        </details>
+        </details>}
       </section>
     </div>
   );

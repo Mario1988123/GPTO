@@ -11,6 +11,18 @@ const ESTADOS: EstadoProyecto[] = [
   "borrador", "presupuestado", "confirmado", "en_fabricacion", "entregado", "cancelado",
 ];
 
+async function assertProyectoEditable(proyectoId: string) {
+  const s = await createClient();
+  const { data } = await s
+    .from("proyectos")
+    .select("estado, cerrado_at")
+    .eq("id", proyectoId)
+    .maybeSingle<{ estado: EstadoProyecto; cerrado_at: string | null }>();
+  if (!data) throw new Error("Proyecto no encontrado.");
+  const cerrado = data.cerrado_at != null || data.estado === "entregado" || data.estado === "cancelado";
+  if (cerrado) throw new Error("Proyecto cerrado: reábrelo para ampliación antes de editar.");
+}
+
 // ================== PROYECTOS ==================
 
 function payloadProyecto(fd: FormData) {
@@ -36,6 +48,7 @@ export async function crearProyecto(fd: FormData) {
   redirect(`${BASE}/${data!.id}?ok=creado`);
 }
 export async function actualizarProyecto(id: string, fd: FormData) {
+  await assertProyectoEditable(id);
   const s = await createClient();
   const { error } = await s.from("proyectos").update(payloadProyecto(fd)).eq("id", id);
   if (error) redirect(`${BASE}/${id}?error=${encodeURIComponent(error.message)}`);
@@ -58,6 +71,30 @@ export async function cambiarEstado(id: string, estado: EstadoProyecto) {
   redirect(`${BASE}/${id}?ok=actualizado`);
 }
 
+export async function reabrirProyecto(id: string) {
+  const s = await createClient();
+  const { error } = await s
+    .from("proyectos")
+    .update({ cerrado_at: null, estado: "en_fabricacion" })
+    .eq("id", id);
+  if (error) redirect(`${BASE}/${id}?error=${encodeURIComponent(error.message)}`);
+  revalidatePath(BASE);
+  revalidatePath(`${BASE}/${id}`);
+  redirect(`${BASE}/${id}?ok=reabierto`);
+}
+
+export async function cerrarProyecto(id: string) {
+  const s = await createClient();
+  const { error } = await s
+    .from("proyectos")
+    .update({ cerrado_at: new Date().toISOString(), estado: "entregado" })
+    .eq("id", id);
+  if (error) redirect(`${BASE}/${id}?error=${encodeURIComponent(error.message)}`);
+  revalidatePath(BASE);
+  revalidatePath(`${BASE}/${id}`);
+  redirect(`${BASE}/${id}?ok=cerrado`);
+}
+
 // ================== ARMARIOS ==================
 
 function payloadArmario(fd: FormData) {
@@ -78,6 +115,7 @@ function payloadArmario(fd: FormData) {
 }
 
 export async function crearArmario(proyectoId: string, fd: FormData) {
+  await assertProyectoEditable(proyectoId);
   const s = await createClient();
   const { data: max } = await s
     .from("armarios")
@@ -99,6 +137,7 @@ export async function crearArmario(proyectoId: string, fd: FormData) {
 }
 
 export async function actualizarArmario(proyectoId: string, armarioId: string, fd: FormData) {
+  await assertProyectoEditable(proyectoId);
   const s = await createClient();
   const { error } = await s.from("armarios").update(payloadArmario(fd)).eq("id", armarioId);
   if (error) redirect(`${BASE}/${proyectoId}/armarios/${armarioId}?error=${encodeURIComponent(error.message)}`);
@@ -108,6 +147,7 @@ export async function actualizarArmario(proyectoId: string, armarioId: string, f
 }
 
 export async function eliminarArmario(proyectoId: string, armarioId: string) {
+  await assertProyectoEditable(proyectoId);
   const s = await createClient();
   const { error } = await s.from("armarios").delete().eq("id", armarioId);
   if (error) redirect(`${BASE}/${proyectoId}?error=${encodeURIComponent(error.message)}`);
@@ -140,6 +180,7 @@ function payloadModulo(fd: FormData) {
 }
 
 export async function anadirModulo(proyectoId: string, armarioId: string, fd: FormData) {
+  await assertProyectoEditable(proyectoId);
   const s = await createClient();
   const { data: max } = await s
     .from("modulos_armario")
@@ -164,6 +205,7 @@ export async function actualizarModulo(
   moduloId: string,
   fd: FormData,
 ) {
+  await assertProyectoEditable(proyectoId);
   const s = await createClient();
   const { error } = await s.from("modulos_armario").update(payloadModulo(fd)).eq("id", moduloId);
   if (error) redirect(`${BASE}/${proyectoId}/armarios/${armarioId}?error=${encodeURIComponent(error.message)}`);
@@ -172,6 +214,7 @@ export async function actualizarModulo(
 }
 
 export async function eliminarModulo(proyectoId: string, armarioId: string, moduloId: string) {
+  await assertProyectoEditable(proyectoId);
   const s = await createClient();
   const { error } = await s.from("modulos_armario").delete().eq("id", moduloId);
   if (error) redirect(`${BASE}/${proyectoId}/armarios/${armarioId}?error=${encodeURIComponent(error.message)}`);

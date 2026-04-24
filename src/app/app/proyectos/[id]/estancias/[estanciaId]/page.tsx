@@ -298,6 +298,7 @@ export default async function DetalleEstanciaPage({
             largoMm={estancia.largo_mm}
             anchoMm={estancia.ancho_mm}
             armarios={armarios ?? []}
+            aberturas={aberturas ?? []}
           />
         </section>
       ) : null}

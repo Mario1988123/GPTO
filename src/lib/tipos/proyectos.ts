@@ -23,9 +23,17 @@ export type Proyecto = {
   estado: EstadoProyecto;
   notas: string | null;
   acceso_token: string;
+  fecha_entrega_comprometida: string | null;
+  fecha_entrega_actual: string | null;
+  cerrado_at: string | null;
+  interiorista_usuario_id: string | null;
   created_at: string;
   updated_at: string;
 };
+
+export function esProyectoCerrado(p: Pick<Proyecto, "estado" | "cerrado_at">): boolean {
+  return p.cerrado_at != null || p.estado === "entregado" || p.estado === "cancelado";
+}
 
 export type Armario = {
   id: string;
