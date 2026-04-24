@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, ContactShadows, Environment } from "@react-three/drei";
 import { Suspense } from "react";
-import { Upload, Download, RotateCcw, Camera } from "lucide-react";
+import { Upload, Download, RotateCcw, Camera, Sparkles, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas-pro";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,12 @@ export function ARPreview(props: Props) {
   const [rotacion, setRotacion] = useState(0); // deg
   const [opacity3D, setOpacity3D] = useState(0.95);
   const [descargando, setDescargando] = useState(false);
+  const [hipereal, setHipereal] = useState<string | null>(null);
+  const [generando, setGenerando] = useState(false);
+  const [prompt, setPrompt] = useState(
+    "professional interior photography, realistic wooden wardrobe in the room, natural lighting, soft shadows, photorealistic, high detail",
+  );
+  const [strength, setStrength] = useState(0.45);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +75,48 @@ export function ARPreview(props: Props) {
     setPosY(60);
     setRotacion(0);
     setOpacity3D(0.95);
+    setHipereal(null);
+  }
+
+  async function generarHiperrealismo() {
+    if (!containerRef.current) return;
+    setGenerando(true);
+    setHipereal(null);
+    try {
+      const canvas = await html2canvas(containerRef.current, {
+        useCORS: true,
+        backgroundColor: null,
+        logging: false,
+      });
+      const dataUrl = canvas.toDataURL("image/png");
+
+      toast("Enviando a la IA...", { description: "Primera vez puede tardar 20-30s mientras arranca el modelo" });
+
+      const resp = await fetch("/api/hiperrealismo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imagenBase64: dataUrl, prompt, strength }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        toast.error(data.error ?? "Error generando");
+        return;
+      }
+      setHipereal(data.imagenBase64);
+      toast.success("Imagen hiperreal generada");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error");
+    } finally {
+      setGenerando(false);
+    }
+  }
+
+  function descargarHipereal() {
+    if (!hipereal) return;
+    const a = document.createElement("a");
+    a.href = hipereal;
+    a.download = `hiperrealismo-${Date.now()}.png`;
+    a.click();
   }
 
   return (
@@ -171,6 +219,98 @@ export function ARPreview(props: Props) {
           <p className="text-xs text-slate-500">
             💡 Ajusta escala y posición hasta que el armario encaje con la perspectiva. Arrastra el armario en el canvas para orbitarlo. Descarga PNG al terminar.
           </p>
+
+          {/* Panel hiperrealismo IA */}
+          <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-5 shadow-sm">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 shadow-lg shadow-blue-500/25">
+                  <Sparkles className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-700">
+                    Hiperrealismo IA · Hugging Face
+                  </p>
+                  <h3 className="mt-0.5 text-base font-bold tracking-tight text-slate-900">
+                    Regenera la imagen con IA para que parezca real
+                  </h3>
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={generarHiperrealismo}
+                disabled={generando}
+                className="bg-gradient-to-br from-blue-500 to-cyan-400 text-white hover:shadow-lg hover:shadow-blue-500/30"
+              >
+                {generando ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Generando...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Generar hiperreal
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-[1fr_200px]">
+              <label className="space-y-1 text-xs">
+                <span className="font-bold uppercase tracking-wider text-slate-600">
+                  Descripción (prompt en inglés, da mejor resultado)
+                </span>
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  rows={2}
+                  className="flex w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm"
+                />
+              </label>
+              <div>
+                <Slider
+                  label="Fidelidad a foto"
+                  value={1 - strength}
+                  min={0.2}
+                  max={0.9}
+                  step={0.05}
+                  onChange={(v) => setStrength(1 - v)}
+                  format={(v) => Math.round(v * 100) + "%"}
+                />
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Más alto = más parecido a tu overlay. Más bajo = más libertad creativa de la IA.
+                </p>
+              </div>
+            </div>
+
+            {hipereal ? (
+              <div className="mt-4">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-600">
+                  Resultado hiperreal
+                </p>
+                <div className="overflow-hidden rounded-lg border border-slate-300 bg-black">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={hipereal} alt="Hiperreal" className="h-auto w-full" />
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  onClick={descargarHipereal}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Descargar hiperreal
+                </Button>
+              </div>
+            ) : (
+              <p className="mt-3 text-[11px] text-slate-500">
+                Los modelos gratuitos de HuggingFace pueden tardar 20-30 segundos la primera vez (están "dormidos"). Si falla, vuelve a pulsar.
+              </p>
+            )}
+          </div>
         </>
       )}
     </div>
