@@ -13,7 +13,7 @@ import {
 import { ToastFromSearchParams } from "../../../../catalogo/shared";
 import { AnadirModuloForm } from "./anadir-modulo";
 import { EditorArmarioPro } from "./editor-armario-pro";
-import { ARPreview } from "./ar-preview";
+import { ARPreviewLazy } from "./ar-preview-lazy";
 import { ProponerDisenoForm } from "./proponer-diseno";
 import {
   crearSubelemento,
@@ -267,7 +267,7 @@ export default async function ConfiguradorArmarioPage({
             Sube una foto de la pared o habitación y ajusta el armario 3D encima para enseñárselo al cliente.
           </p>
         </div>
-        <ARPreview
+        <ARPreviewLazy
           armario_ancho_mm={armario.ancho_total_mm}
           armario_alto_mm={armario.alto_total_mm}
           armario_fondo_mm={armario.fondo_mm}
