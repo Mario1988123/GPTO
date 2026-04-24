@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ArrowLeft, Trash2, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   actualizarArmario,
@@ -11,31 +12,42 @@ import {
 } from "../../../actions";
 import { ToastFromSearchParams } from "../../../../catalogo/shared";
 import { AnadirModuloForm } from "./anadir-modulo";
-import { Armario3D } from "./armario-3d";
-import { Armario3DInteractivo } from "./armario-3d-interactivo";
+import { EditorArmarioPro } from "./editor-armario-pro";
 import { ProponerDisenoForm } from "./proponer-diseno";
+import {
+  crearSubelemento,
+  actualizarSubelemento,
+  eliminarSubelemento,
+  moverPosicionModulo,
+  actualizarLedModulo,
+} from "../../../subelementos-actions";
 import { cambiarEstadoPieza, regenerarPiezasArmario } from "../../../piezas-actions";
 import { actualizarDatosInstalacion } from "../../../estancias-actions";
 import { aplicarDisenoPropuesto } from "../../../diseno-actions";
 import { TIPOS_INSTALACION } from "@/lib/tipos/estancias";
-import type { Armario, ModuloArmario, Proyecto } from "@/lib/tipos/proyectos";
+import type { Armario, ModuloArmario, ModuloSubelemento, Proyecto } from "@/lib/tipos/proyectos";
 import type { CategoriaModulo } from "@/lib/tipos/tipos_modulo";
-import { ESTADOS_PIEZA, type EstadoPieza, type PiezaModulo } from "@/lib/tipos/piezas";
+import { ESTADOS_PIEZA, type EstadoPieza } from "@/lib/tipos/piezas";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
 type ModuloVista = ModuloArmario & {
   tipos_modulo: { nombre: string } | null;
+  modulo_subelementos: ModuloSubelemento[] | null;
 };
 
-// paleta estable por orden
-const COLORS = [
-  "bg-blue-200 dark:bg-blue-900/40",
-  "bg-emerald-200 dark:bg-emerald-900/40",
-  "bg-amber-200 dark:bg-amber-900/40",
-  "bg-violet-200 dark:bg-violet-900/40",
-  "bg-rose-200 dark:bg-rose-900/40",
-  "bg-cyan-200 dark:bg-cyan-900/40",
+const PALETA = [
+  "#b5d3ff",
+  "#c3e9c8",
+  "#fdd98a",
+  "#e7cff8",
+  "#fdb7bd",
+  "#afe8f0",
+  "#d6ed9f",
+  "#f3b9e7",
 ];
 
 export default async function ConfiguradorArmarioPage({
@@ -52,7 +64,7 @@ export default async function ConfiguradorArmarioPage({
   const [{ data: proyecto }, { data: modulos }, { data: tipos }, { data: refs }, { data: piezasRaw }] = await Promise.all([
     s.from("proyectos").select("*").eq("id", proyectoId).maybeSingle<Proyecto>(),
     s.from("modulos_armario")
-      .select("*, tipos_modulo(nombre)")
+      .select("*, tipos_modulo(nombre), modulo_subelementos(*)")
       .eq("armario_id", armarioId)
       .order("orden")
       .returns<ModuloVista[]>(),
@@ -84,290 +96,286 @@ export default async function ConfiguradorArmarioPage({
 
   const anchoOcupado = (modulos ?? []).reduce((acc, m) => acc + m.ancho_mm, 0);
   const anchoLibre = armario.ancho_total_mm - anchoOcupado;
-  const porcentajeOcupado = Math.min(100, Math.round((anchoOcupado / armario.ancho_total_mm) * 100));
 
-  const updArm = async (fd: FormData) => { "use server"; await actualizarArmario(proyectoId, armarioId, fd); };
+  // Calcular layout automático si todos tienen posicion_x=0 y posicion_y=0 (legacy)
+  const todosCero = (modulos ?? []).every((m) => m.posicion_x_mm === 0 && m.posicion_y_mm === 0);
+  const modulosConPos = todosCero
+    ? (() => {
+        let x = 0;
+        return (modulos ?? []).map((m) => {
+          const entry = { ...m, posicion_x_mm: x, posicion_y_mm: 0 };
+          x += m.ancho_mm;
+          return entry;
+        });
+      })()
+    : (modulos ?? []);
+
   const delArm = async () => { "use server"; await eliminarArmario(proyectoId, armarioId); };
   const addMod = async (fd: FormData) => { "use server"; await anadirModulo(proyectoId, armarioId, fd); };
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-6 py-8">
       <Suspense><ToastFromSearchParams /></Suspense>
-      <nav className="text-sm space-x-2">
-        <Link href="/app/proyectos" className="text-zinc-500 hover:underline dark:text-zinc-400">Proyectos</Link>
-        <span className="text-zinc-400">/</span>
-        <Link href={`/app/proyectos/${proyectoId}`} className="text-zinc-500 hover:underline dark:text-zinc-400">
+      <nav className="mb-4 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Link href="/app/proyectos" className="inline-flex items-center gap-1 transition hover:text-foreground">
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Proyectos
+        </Link>
+        <span>·</span>
+        <Link href={`/app/proyectos/${proyectoId}`} className="transition hover:text-foreground">
           {proyecto.nombre}
         </Link>
       </nav>
 
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-        {armario.nombre}
-      </h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        Hueco: {armario.ancho_total_mm} × {armario.alto_total_mm} × {armario.fondo_mm} mm
-        <span className="ml-2 text-xs rounded-full bg-zinc-100 px-2 py-0.5 dark:bg-zinc-800">
-          {armario.tipo_instalacion === "empotrado" ? `Empotrado · tapeta ${armario.margen_tapeta_mm}mm` : "Suelto"}
-        </span>
-      </p>
+      <PageHeader
+        eyebrow="Editor de armario"
+        title={armario.nombre}
+        description={`Hueco ${armario.ancho_total_mm} × ${armario.alto_total_mm} × ${armario.fondo_mm} mm`}
+        actions={
+          <>
+            <Badge variant="secondary">
+              {armario.tipo_instalacion === "empotrado"
+                ? `Empotrado · tapeta ${armario.margen_tapeta_mm} mm`
+                : "Suelto"}
+            </Badge>
+          </>
+        }
+      />
 
-      {/* Proponer diseño (tipos estándar) */}
-      <section className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/30 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <h3 className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">✨ Auto-diseño</h3>
-            <p className="mt-0.5 text-xs text-emerald-700 dark:text-emerald-400">
-              Selecciona cuántos módulos estándar quieres (cajonera, colgador, zapatero…) y GPTO los encaja automáticamente en el hueco.
-            </p>
+      {/* Auto-diseño */}
+      <section className="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-200/60 bg-emerald-50/40 p-5 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
+          <Sparkles className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Auto-diseño</p>
+          <p className="mt-0.5 text-xs text-emerald-700/80 dark:text-emerald-400/80">
+            Selecciona cuántos módulos estándar quieres (cajonera, colgador, zapatero...) y GPTO los encaja automáticamente.
+          </p>
+          <div className="mt-3">
+            <ProponerDisenoForm
+              ancho_armario_mm={armario.ancho_total_mm - (armario.tipo_instalacion === "empotrado" ? 2 * armario.margen_tapeta_mm : 0)}
+              tipos={(tipos ?? []).filter((t) => (t as { es_estandar?: boolean }).es_estandar).map((t) => ({
+                id: (t as { id: string }).id,
+                nombre: (t as { nombre: string }).nombre,
+                categoria: ((t as { categoria?: CategoriaModulo }).categoria ?? "otro") as CategoriaModulo,
+                ancho_default_mm: (t as { ancho_default_mm: number }).ancho_default_mm,
+                alto_default_mm: (t as { alto_default_mm: number }).alto_default_mm,
+                fondo_default_mm: (t as { fondo_default_mm: number }).fondo_default_mm,
+              }))}
+              action={async (pl) => {
+                "use server";
+                await aplicarDisenoPropuesto(proyectoId, armarioId, pl);
+              }}
+            />
           </div>
-          <ProponerDisenoForm
-            ancho_armario_mm={armario.ancho_total_mm - (armario.tipo_instalacion === "empotrado" ? 2 * armario.margen_tapeta_mm : 0)}
-            tipos={(tipos ?? []).filter((t) => (t as { es_estandar?: boolean }).es_estandar).map((t) => ({
-              id: (t as { id: string }).id,
-              nombre: (t as { nombre: string }).nombre,
-              categoria: ((t as { categoria?: CategoriaModulo }).categoria ?? "otro") as CategoriaModulo,
-              ancho_default_mm: (t as { ancho_default_mm: number }).ancho_default_mm,
-              alto_default_mm: (t as { alto_default_mm: number }).alto_default_mm,
-              fondo_default_mm: (t as { fondo_default_mm: number }).fondo_default_mm,
+        </div>
+      </section>
+
+      {/* Editor Pro 3D + Panel lateral */}
+      <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Vista 3D
+            </p>
+            <h2 className="mt-0.5 text-lg font-bold tracking-tight">Editor interactivo</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Ocupado <span className="font-mono font-semibold text-foreground">{anchoOcupado} mm</span>
+            {" · "}
+            {anchoLibre >= 0 ? (
+              <>
+                Libre{" "}
+                <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">
+                  {anchoLibre} mm
+                </span>
+              </>
+            ) : (
+              <span className="font-mono font-semibold text-destructive">
+                Exceso {Math.abs(anchoLibre)} mm
+              </span>
+            )}
+          </p>
+        </div>
+
+        {modulosConPos.length === 0 ? (
+          <div className="flex h-[400px] items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-sm text-muted-foreground">
+            Añade módulos o usa Auto-diseño para empezar.
+          </div>
+        ) : (
+          <EditorArmarioPro
+            proyectoId={proyectoId}
+            armarioId={armarioId}
+            armario_ancho_mm={armario.ancho_total_mm}
+            armario_alto_mm={armario.alto_total_mm}
+            armario_fondo_mm={armario.fondo_mm}
+            tipo_instalacion={armario.tipo_instalacion}
+            margen_tapeta_mm={armario.margen_tapeta_mm}
+            modulos={modulosConPos.map((m, i) => ({
+              id: m.id,
+              nombre: m.nombre_override ?? m.tipos_modulo?.nombre ?? "Módulo",
+              ancho_mm: m.ancho_mm,
+              alto_mm: m.alto_mm,
+              fondo_mm: m.fondo_mm,
+              posicion_x_mm: m.posicion_x_mm,
+              posicion_y_mm: m.posicion_y_mm,
+              particiones: m.particiones_verticales ?? 1,
+              color: PALETA[i % PALETA.length],
+              tiene_led_rebaje: m.tiene_led_rebaje ?? false,
+              led_color_hex: m.led_color_hex ?? null,
+              led_intensidad_lm_m: m.led_intensidad_lm_m ?? null,
+              subelementos: m.modulo_subelementos ?? [],
             }))}
-            action={async (pl) => {
+            onMoverModulo={async (moduloId, x, y) => {
               "use server";
-              await aplicarDisenoPropuesto(proyectoId, armarioId, pl);
+              await moverPosicionModulo(proyectoId, armarioId, moduloId, x, y);
+            }}
+            onActualizarLed={async (moduloId, fd) => {
+              "use server";
+              await actualizarLedModulo(proyectoId, armarioId, moduloId, fd);
+            }}
+            onCrearSubelemento={async (moduloId, fd) => {
+              "use server";
+              await crearSubelemento(proyectoId, armarioId, moduloId, fd);
+            }}
+            onActualizarSubelemento={async (subId, fd) => {
+              "use server";
+              await actualizarSubelemento(proyectoId, armarioId, subId, fd);
+            }}
+            onEliminarSubelemento={async (subId) => {
+              "use server";
+              await eliminarSubelemento(proyectoId, armarioId, subId);
             }}
           />
-        </div>
-      </section>
-
-      {/* Vista 3D interactiva */}
-      <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-lg font-medium">Vista 3D interactiva</h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Click en módulo para seleccionar · arrastra fondo para rotar · rueda para zoom</p>
-        </div>
-        <Armario3DInteractivo
-          armario_ancho_mm={armario.ancho_total_mm}
-          armario_alto_mm={armario.alto_total_mm}
-          armario_fondo_mm={armario.fondo_mm}
-          tipo_instalacion={armario.tipo_instalacion}
-          margen_tapeta_mm={armario.margen_tapeta_mm}
-          modulos={(modulos ?? []).map((m, i) => ({
-            id: m.id,
-            nombre: m.nombre_override ?? m.tipos_modulo?.nombre ?? "Módulo",
-            ancho_mm: m.ancho_mm,
-            alto_mm: m.alto_mm,
-            fondo_mm: m.fondo_mm,
-            particiones: m.particiones_verticales ?? 1,
-            color: ["#93c5fd","#86efac","#fcd34d","#d8b4fe","#fda4af","#67e8f9","#bef264","#f0abfc"][i % 8],
-          }))}
-          actionMoverArriba={async (id) => { "use server"; await moverModulo(proyectoId, armarioId, id, "arriba"); }}
-          actionMoverAbajo={async (id) => { "use server"; await moverModulo(proyectoId, armarioId, id, "abajo"); }}
-          actionEliminar={async (id) => { "use server"; await eliminarModulo(proyectoId, armarioId, id); }}
-        />
-      </section>
-
-      {/* Preview visual del armario */}
-      <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">Vista frontal (esquemática)</h2>
-          <div className="text-xs text-zinc-600 dark:text-zinc-400">
-            Ocupado: <span className="font-mono">{anchoOcupado} mm</span>{" "}
-            {anchoLibre >= 0
-              ? <>· Libre: <span className="font-mono text-emerald-700 dark:text-emerald-400">{anchoLibre} mm</span></>
-              : <span className="font-mono text-red-700 dark:text-red-400"> · Exceso: {Math.abs(anchoLibre)} mm</span>}
-          </div>
-        </div>
-        <div
-          className="relative mx-auto flex items-stretch overflow-hidden rounded-md border-2 border-zinc-400 bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-950"
-          style={{ aspectRatio: `${armario.ancho_total_mm} / ${armario.alto_total_mm}`, maxHeight: 360 }}
-        >
-          {(modulos ?? []).length === 0 ? (
-            <div className="flex w-full items-center justify-center text-xs text-zinc-400">
-              Añade módulos para empezar
-            </div>
-          ) : (
-            (modulos ?? []).map((m, i) => {
-              const w = (m.ancho_mm / armario.ancho_total_mm) * 100;
-              const part = m.particiones_verticales ?? 1;
-              return (
-                <div
-                  key={m.id}
-                  className={`${COLORS[i % COLORS.length]} relative flex flex-col items-center justify-center border-r border-zinc-400/60 px-1 text-center text-[10px] leading-tight dark:border-zinc-600/60`}
-                  style={{ width: `${w}%` }}
-                  title={`${m.tipos_modulo?.nombre ?? ""} · ${m.ancho_mm}×${m.alto_mm}×${m.fondo_mm} mm${part > 1 ? ` · ${part} apilados` : ""}`}
-                >
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-100">
-                    {m.nombre_override ?? m.tipos_modulo?.nombre ?? "?"}
-                  </span>
-                  <span className="font-mono text-[9px] text-zinc-700 dark:text-zinc-300">
-                    {m.ancho_mm} mm
-                  </span>
-                  {part > 1 ? (
-                    <span className="font-mono text-[9px] text-zinc-700 dark:text-zinc-300">
-                      {part}× apilados
-                    </span>
-                  ) : null}
-                  {/* Líneas divisorias por partición */}
-                  {part > 1
-                    ? Array.from({ length: part - 1 }).map((_, k) => (
-                        <div
-                          key={k}
-                          className="pointer-events-none absolute left-0 right-0 border-t-2 border-dashed border-zinc-700/60 dark:border-zinc-200/40"
-                          style={{ top: `${((k + 1) / part) * 100}%` }}
-                        />
-                      ))
-                    : null}
-                </div>
-              );
-            })
-          )}
-          {anchoLibre > 0 ? (
-            <div
-              className="flex flex-col items-center justify-center border-l-2 border-dashed border-zinc-400 bg-zinc-100/40 text-[10px] text-zinc-500 dark:border-zinc-600 dark:bg-zinc-800/40"
-              style={{ width: `${(anchoLibre / armario.ancho_total_mm) * 100}%` }}
-            >
-              <span>libre</span>
-              <span className="font-mono">{anchoLibre} mm</span>
-            </div>
-          ) : null}
-        </div>
-        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-          <div
-            className={`h-full ${anchoLibre < 0 ? "bg-red-500" : "bg-emerald-500"}`}
-            style={{ width: `${porcentajeOcupado}%` }}
-          />
-        </div>
+        )}
       </section>
 
       {/* Form editar armario */}
-      <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">Dimensiones del hueco y tipo de instalación</h2>
-        <form action={async (fd: FormData) => { "use server"; await actualizarDatosInstalacion(proyectoId, armarioId, fd); }} className="grid gap-3 sm:grid-cols-6">
-          <div className="sm:col-span-2 space-y-1">
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Tipo instalación</label>
-            <select name="tipo_instalacion" defaultValue={armario.tipo_instalacion} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950">
-              {TIPOS_INSTALACION.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+      <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="mb-5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Dimensiones</p>
+          <h2 className="mt-0.5 text-lg font-bold tracking-tight">Hueco e instalación</h2>
+        </div>
+        <form
+          action={async (fd: FormData) => {
+            "use server";
+            await actualizarDatosInstalacion(proyectoId, armarioId, fd);
+          }}
+          className="grid gap-4 sm:grid-cols-6"
+        >
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="block text-xs font-semibold text-muted-foreground">Instalación</label>
+            <select
+              name="tipo_instalacion"
+              defaultValue={armario.tipo_instalacion}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs"
+            >
+              {TIPOS_INSTALACION.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
             </select>
           </div>
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Tapeta (mm)</label>
-            <input name="margen_tapeta_mm" type="number" min="0" max="50" defaultValue={armario.margen_tapeta_mm} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
-            <p className="text-[10px] text-zinc-500 dark:text-zinc-400">solo empotrado</p>
-          </div>
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Nombre</label>
-            <input name="nombre" defaultValue={armario.nombre} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
-          </div>
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Ancho (mm)</label>
-            <input name="ancho_total_mm" type="number" required defaultValue={armario.ancho_total_mm} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
-          </div>
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Alto (mm)</label>
-            <input name="alto_total_mm" type="number" required defaultValue={armario.alto_total_mm} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
-          </div>
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Fondo (mm)</label>
-            <input name="fondo_mm" type="number" required defaultValue={armario.fondo_mm} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
-          </div>
-          <div className="sm:col-span-6 flex items-center gap-3">
-            <button type="submit" className="rounded-md bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
-              Guardar cambios
-            </button>
+          <Inp name="margen_tapeta_mm" label="Tapeta (mm)" type="number" min={0} max={50} defaultValue={armario.margen_tapeta_mm} hint="empotrado" />
+          <Inp name="nombre" label="Nombre" defaultValue={armario.nombre} />
+          <Inp name="ancho_total_mm" label="Ancho (mm)" type="number" defaultValue={armario.ancho_total_mm} required />
+          <Inp name="alto_total_mm" label="Alto (mm)" type="number" defaultValue={armario.alto_total_mm} required />
+          <Inp name="fondo_mm" label="Fondo (mm)" type="number" defaultValue={armario.fondo_mm} required />
+          <div className="sm:col-span-6 flex items-center gap-3 border-t border-border pt-4">
+            <Button type="submit">Guardar cambios</Button>
             <form action={delArm} className="inline">
-              <button type="submit" className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 dark:border-red-900 dark:bg-zinc-950 dark:text-red-300">
+              <Button
+                type="submit"
+                variant="outline"
+                className="border-destructive/30 text-destructive hover:bg-destructive/5"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
                 Eliminar armario
-              </button>
-            </form>
-          </div>
-        </form>
-      </section>
-
-      {/* Form editar armario antiguo (campos basicos) - oculto ahora que lo reemplaza el form de arriba */}
-      <section className="hidden rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">(oculto)</h2>
-        <form action={updArm} className="grid gap-3 sm:grid-cols-5">
-          <div className="sm:col-span-2 space-y-1">
-            <label htmlFor="nombre" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Nombre</label>
-            <input id="nombre" name="nombre" defaultValue={armario.nombre} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="ancho_total_mm" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Ancho (mm)</label>
-            <input id="ancho_total_mm" name="ancho_total_mm" type="number" required defaultValue={armario.ancho_total_mm} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="alto_total_mm" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Alto (mm)</label>
-            <input id="alto_total_mm" name="alto_total_mm" type="number" required defaultValue={armario.alto_total_mm} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="fondo_mm" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Fondo (mm)</label>
-            <input id="fondo_mm" name="fondo_mm" type="number" required defaultValue={armario.fondo_mm} className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
-          </div>
-          <div className="sm:col-span-5 flex items-center gap-3">
-            <button type="submit" className="rounded-md bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
-              Guardar cambios
-            </button>
-            <form action={delArm} className="inline">
-              <button type="submit" className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 dark:border-red-900 dark:bg-zinc-950 dark:text-red-300">
-                Eliminar armario
-              </button>
+              </Button>
             </form>
           </div>
         </form>
       </section>
 
       {/* Lista módulos */}
-      <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">Módulos ({modulos?.length ?? 0})</h2>
+      <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="mb-5 flex items-baseline justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Módulos</p>
+            <h2 className="mt-0.5 text-lg font-bold tracking-tight">{modulos?.length ?? 0} módulos</h2>
+          </div>
+        </div>
 
         {(modulos ?? []).length === 0 ? (
-          <p className="rounded-md bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+          <p className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
             Sin módulos. Añade el primero abajo.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+          <div className="overflow-hidden rounded-xl border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950/50 dark:text-zinc-400">
+              <thead className="bg-muted/30 text-xs uppercase text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 font-medium">#</th>
-                  <th className="px-3 py-2 font-medium">Tipo</th>
-                  <th className="px-3 py-2 font-medium">Dimensiones (mm)</th>
-                  <th className="px-3 py-2 font-medium">Part. ↕</th>
-                  <th className="px-3 py-2 font-medium">Acciones</th>
+                  <th className="px-3 py-2 font-semibold">#</th>
+                  <th className="px-3 py-2 font-semibold">Tipo</th>
+                  <th className="px-3 py-2 font-semibold">Dimensiones</th>
+                  <th className="px-3 py-2 font-semibold">Posición</th>
+                  <th className="px-3 py-2 font-semibold">Particiones</th>
+                  <th className="px-3 py-2 font-semibold">Subelementos</th>
+                  <th className="px-3 py-2 font-semibold">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                {(modulos ?? []).map((m, i) => {
+              <tbody className="divide-y divide-border">
+                {(modulosConPos ?? []).map((m, i) => {
                   const up = async () => { "use server"; await moverModulo(proyectoId, armarioId, m.id, "arriba"); };
                   const down = async () => { "use server"; await moverModulo(proyectoId, armarioId, m.id, "abajo"); };
                   const del = async () => { "use server"; await eliminarModulo(proyectoId, armarioId, m.id); };
+                  const subs = m.modulo_subelementos?.length ?? 0;
                   return (
                     <tr key={m.id}>
-                      <td className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">{i + 1}</td>
-                      <td className="px-3 py-2">
-                        <span className="font-medium">{m.nombre_override ?? m.tipos_modulo?.nombre ?? "?"}</span>
-                        {m.nombre_override ? (
-                          <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
-                            ({m.tipos_modulo?.nombre})
-                          </span>
-                        ) : null}
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{i + 1}</td>
+                      <td className="px-3 py-2 font-semibold">
+                        {m.nombre_override ?? m.tipos_modulo?.nombre ?? "?"}
                       </td>
-                      <td className="px-3 py-2 font-mono text-xs text-zinc-600 dark:text-zinc-400">
-                        {m.ancho_mm} × {m.alto_mm} × {m.fondo_mm}
+                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                        {m.ancho_mm}×{m.alto_mm}×{m.fondo_mm}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs">
+                        X:{m.posicion_x_mm} Y:{m.posicion_y_mm}
                       </td>
                       <td className="px-3 py-2 text-xs">
                         {(m.particiones_verticales ?? 1) > 1 ? (
-                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-                            {m.particiones_verticales}× de {Math.round(m.alto_mm / (m.particiones_verticales ?? 1))} mm
-                          </span>
+                          <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                            {m.particiones_verticales}× apilado
+                          </Badge>
                         ) : (
-                          <span className="text-zinc-400">—</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </td>
+                      <td className="px-3 py-2 text-xs font-mono">{subs}</td>
                       <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <form action={up}><button type="submit" disabled={i === 0} className="text-xs text-zinc-700 hover:underline disabled:opacity-40 dark:text-zinc-300">↑</button></form>
-                          <form action={down}><button type="submit" disabled={i === (modulos?.length ?? 0) - 1} className="text-xs text-zinc-700 hover:underline disabled:opacity-40 dark:text-zinc-300">↓</button></form>
-                          <form action={del}><button type="submit" className="text-xs text-red-700 hover:underline dark:text-red-300">Quitar</button></form>
+                        <div className="flex items-center gap-1.5">
+                          <form action={up}>
+                            <Button type="submit" variant="ghost" size="icon-xs" disabled={i === 0}>
+                              ↑
+                            </Button>
+                          </form>
+                          <form action={down}>
+                            <Button type="submit" variant="ghost" size="icon-xs" disabled={i === (modulos?.length ?? 0) - 1}>
+                              ↓
+                            </Button>
+                          </form>
+                          <form action={del}>
+                            <Button
+                              type="submit"
+                              variant="ghost"
+                              size="icon-xs"
+                              className="text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </form>
                         </div>
                       </td>
                     </tr>
@@ -378,8 +386,8 @@ export default async function ConfiguradorArmarioPage({
           </div>
         )}
 
-        <div className="mt-4">
-          <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">Añadir módulo</h3>
+        <div className="mt-5 rounded-xl border border-dashed border-border bg-muted/20 p-4">
+          <h3 className="mb-3 text-sm font-bold tracking-tight">Añadir módulo</h3>
           <AnadirModuloForm
             action={addMod}
             tipos={tipos ?? []}
@@ -391,20 +399,26 @@ export default async function ConfiguradorArmarioPage({
         </div>
       </section>
 
-      {/* Sección 4: piezas físicas */}
+      {/* Piezas físicas */}
       {(() => {
         const regen = async () => {
           "use server";
           await regenerarPiezasArmario(proyectoId, armarioId);
         };
         const EST_PIEZA = Object.fromEntries(ESTADOS_PIEZA.map((e) => [e.value, e]));
+        void cambiarEstadoPieza;
         return (
-          <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="mb-4 flex items-center justify-between">
+          <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+            <div className="mb-5 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">Piezas físicas ({piezasRaw?.length ?? 0})</h2>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  Generadas aplicando las fórmulas del tipo_modulo a las medidas reales de cada módulo.
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Producción
+                </p>
+                <h2 className="mt-0.5 text-lg font-bold tracking-tight">
+                  Piezas físicas · {piezasRaw?.length ?? 0}
+                </h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Generadas aplicando las fórmulas del tipo de módulo a las medidas reales.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -413,41 +427,37 @@ export default async function ConfiguradorArmarioPage({
                     href={`/api/piezas/armario/${armarioId}/etiquetas`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-xs font-medium dark:border-zinc-700 dark:bg-zinc-950"
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
                   >
                     🖨️ Etiquetas QR PDF
                   </a>
                 ) : null}
                 <form action={regen}>
-                  <button
-                    type="submit"
-                    disabled={(modulos?.length ?? 0) === 0}
-                    className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900"
-                  >
+                  <Button type="submit" size="sm" disabled={(modulos?.length ?? 0) === 0}>
                     {(piezasRaw?.length ?? 0) === 0 ? "Explosionar piezas" : "Regenerar piezas"}
-                  </button>
+                  </Button>
                 </form>
               </div>
             </div>
 
             {(piezasRaw ?? []).length === 0 ? (
-              <p className="rounded-md bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
-                No hay piezas calculadas. Pulsa <strong>Explosionar piezas</strong> para generarlas a partir de los módulos configurados.
+              <p className="rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
+                No hay piezas calculadas. Pulsa <strong>Explosionar piezas</strong> para generarlas.
               </p>
             ) : (
-              <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
+              <div className="overflow-hidden rounded-xl border border-border">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950/50 dark:text-zinc-400">
+                  <thead className="bg-muted/30 text-xs uppercase text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 font-medium">Módulo</th>
-                      <th className="px-3 py-2 font-medium">Pieza</th>
-                      <th className="px-3 py-2 font-medium">Ud.</th>
-                      <th className="px-3 py-2 font-medium">Dimensiones (mm)</th>
-                      <th className="px-3 py-2 font-medium">Estado</th>
-                      <th className="px-3 py-2 font-medium">QR</th>
+                      <th className="px-3 py-2 font-semibold">Módulo</th>
+                      <th className="px-3 py-2 font-semibold">Pieza</th>
+                      <th className="px-3 py-2 font-semibold">Ud.</th>
+                      <th className="px-3 py-2 font-semibold">Dimensiones</th>
+                      <th className="px-3 py-2 font-semibold">Estado</th>
+                      <th className="px-3 py-2 font-semibold">QR</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                  <tbody className="divide-y divide-border">
                     {(piezasRaw ?? []).map((p) => {
                       const rel = (p as unknown as { modulos_armario?: { nombre_override: string | null; orden: number; tipos_modulo?: { nombre?: string } | null } }).modulos_armario;
                       const modNombre = rel?.nombre_override ?? rel?.tipos_modulo?.nombre ?? "?";
@@ -455,17 +465,15 @@ export default async function ConfiguradorArmarioPage({
                       const est = EST_PIEZA[p.estado as EstadoPieza];
                       return (
                         <tr key={p.id}>
-                          <td className="px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400">#{modOrden} · {modNombre}</td>
-                          <td className="px-3 py-2 font-medium">{p.nombre}</td>
-                          <td className="px-3 py-2 text-zinc-600 dark:text-zinc-400">{p.cantidad}</td>
-                          <td className="px-3 py-2 font-mono text-xs">{p.largo_mm} × {p.ancho_mm} × {p.grosor_mm}</td>
+                          <td className="px-3 py-2 text-xs text-muted-foreground">#{modOrden} · {modNombre}</td>
+                          <td className="px-3 py-2 font-semibold">{p.nombre}</td>
+                          <td className="px-3 py-2 font-mono">{p.cantidad}</td>
+                          <td className="px-3 py-2 font-mono text-xs">{p.largo_mm}×{p.ancho_mm}×{p.grosor_mm}</td>
                           <td className="px-3 py-2">
-                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${est?.color ?? ""}`}>
-                              {est?.label ?? p.estado}
-                            </span>
+                            <Badge variant="secondary">{est?.label ?? p.estado}</Badge>
                           </td>
                           <td className="px-3 py-2">
-                            <Link href={`/t/${p.qr_code}`} target="_blank" className="text-xs text-zinc-600 hover:underline dark:text-zinc-400">
+                            <Link href={`/t/${p.qr_code}`} target="_blank" className="text-xs text-muted-foreground hover:text-foreground hover:underline">
                               ver
                             </Link>
                           </td>
@@ -479,6 +487,42 @@ export default async function ConfiguradorArmarioPage({
           </section>
         );
       })()}
+    </div>
+  );
+}
+
+function Inp({
+  name,
+  label,
+  hint,
+  type = "text",
+  defaultValue,
+  required,
+  min,
+  max,
+}: {
+  name: string;
+  label: string;
+  hint?: string;
+  type?: string;
+  defaultValue?: string | number;
+  required?: boolean;
+  min?: number;
+  max?: number;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-xs font-semibold text-muted-foreground">{label}</label>
+      <input
+        name={name}
+        type={type}
+        required={required}
+        min={min}
+        max={max}
+        defaultValue={defaultValue}
+        className="flex h-9 w-full rounded-md border border-input bg-background px-3 font-mono text-sm shadow-xs outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15"
+      />
+      {hint ? <p className="text-[10px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

@@ -57,7 +57,97 @@ export type ModuloArmario = {
   fondo_mm: number;
   particiones_verticales: number;
   referencia_tablero_id: string | null;
+  posicion_x_mm: number;
+  posicion_y_mm: number;
+  tiene_led_rebaje: boolean;
+  led_color_hex: string | null;
+  led_intensidad_lm_m: number | null;
   notas: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TipoSubelemento =
+  | "cajon"
+  | "balda_fija"
+  | "balda_regulable"
+  | "puerta_abatible"
+  | "puerta_corredera"
+  | "puerta_plegable"
+  | "barra_colgar"
+  | "hueco_abierto"
+  | "tapeta_ciega"
+  | "espejo"
+  | "led_rebaje"
+  | "zapatero"
+  | "cesto_extraible"
+  | "corbatero"
+  | "joyero"
+  | "portapantalones"
+  | "canaleta_tirador";
+
+export const SUBELEMENTOS_META: Record<
+  TipoSubelemento,
+  { label: string; grupo: "interior_horizontal" | "frente" | "complemento"; color: string; descripcion: string }
+> = {
+  cajon: { label: "Cajón", grupo: "interior_horizontal", color: "#c9a27c", descripcion: "Cajón con alto configurable" },
+  balda_fija: { label: "Balda fija", grupo: "interior_horizontal", color: "#a07855", descripcion: "Balda horizontal fija" },
+  balda_regulable: { label: "Balda regulable", grupo: "interior_horizontal", color: "#b58c65", descripcion: "Balda con apoyos ajustables" },
+  barra_colgar: { label: "Barra colgar", grupo: "interior_horizontal", color: "#8892b0", descripcion: "Barra metálica para colgar ropa" },
+  hueco_abierto: { label: "Hueco libre", grupo: "interior_horizontal", color: "transparent", descripcion: "Espacio vacío aprovechable" },
+  puerta_abatible: { label: "Puerta abatible", grupo: "frente", color: "#3c3c3c", descripcion: "Puerta con bisagras" },
+  puerta_corredera: { label: "Puerta corredera", grupo: "frente", color: "#4a4a4a", descripcion: "Puerta deslizante" },
+  puerta_plegable: { label: "Puerta plegable", grupo: "frente", color: "#5a5a5a", descripcion: "Puerta que se pliega" },
+  tapeta_ciega: { label: "Tapeta ciega", grupo: "frente", color: "#6c5a48", descripcion: "Panel ciego para rellenar hueco" },
+  espejo: { label: "Espejo", grupo: "frente", color: "#cdd8e3", descripcion: "Espejo en puerta o interior" },
+  led_rebaje: { label: "Rebaje LED", grupo: "complemento", color: "#ffe066", descripcion: "Rebaje avellanado para tira LED" },
+  zapatero: { label: "Zapatero", grupo: "complemento", color: "#7d6552", descripcion: "Bandeja abatible para zapatos" },
+  cesto_extraible: { label: "Cesto extraíble", grupo: "complemento", color: "#9ea7b8", descripcion: "Cesto metálico sobre guías" },
+  corbatero: { label: "Corbatero", grupo: "complemento", color: "#b5a488", descripcion: "Soporte extraíble de corbatas" },
+  joyero: { label: "Joyero", grupo: "complemento", color: "#d4b898", descripcion: "Bandeja compartimentada para joyas" },
+  portapantalones: { label: "Portapantalones", grupo: "complemento", color: "#a0926f", descripcion: "Soporte extraíble de pantalones" },
+  canaleta_tirador: { label: "Canaleta tirador", grupo: "complemento", color: "#555", descripcion: "Rebaje continuo como tirador integrado" },
+};
+
+export type ModuloSubelemento = {
+  id: string;
+  empresa_id: string;
+  modulo_id: string;
+  tipo: TipoSubelemento;
+  orden: number;
+  alto_mm: number | null;
+  ancho_mm: number | null;
+  offset_x_mm: number;
+  offset_y_mm: number;
+  offset_z_mm: number;
+  config: Record<string, unknown>;
+  etiqueta: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EstanciaGeometria = {
+  estancia_id: string;
+  empresa_id: string;
+  tipo: "rectangular" | "poligono";
+  puntos: { x: number; y: number }[];
+  alto_pared_mm: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Abertura = {
+  id: string;
+  empresa_id: string;
+  estancia_id: string;
+  tipo: "puerta" | "ventana";
+  pared_idx: number;
+  x_en_pared_mm: number;
+  ancho_mm: number;
+  alto_mm: number;
+  antepecho_mm: number;
+  etiqueta: string | null;
+  orden: number;
   created_at: string;
   updated_at: string;
 };
