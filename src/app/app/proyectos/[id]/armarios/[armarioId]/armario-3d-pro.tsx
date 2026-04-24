@@ -49,7 +49,11 @@ type Props = {
 
 const COLOR_SEL = "#f97316";
 
-export function Armario3DPro({
+/**
+ * Contenido 3D puro del armario — SIN <Canvas>. Se monta DENTRO de cualquier Canvas
+ * externo (editor principal, AR, etc). Si se envuelve en dos Canvas se rompe.
+ */
+export function ArmarioScene({
   armario_ancho_mm,
   armario_alto_mm,
   armario_fondo_mm,
@@ -60,7 +64,9 @@ export function Armario3DPro({
   selectedId,
   onSelect,
   onMove,
-}: Props) {
+  showFloor = true,
+  showControls = true,
+}: Props & { showFloor?: boolean; showControls?: boolean }) {
   const [dragging, setDragging] = useState(false);
   const [, start] = useTransition();
 
@@ -69,36 +75,14 @@ export function Armario3DPro({
   const H = armario_alto_mm * k;
   const D = armario_fondo_mm * k;
   const margen = tipo_instalacion === "empotrado" ? margen_tapeta_mm * k : 0;
-  const diagonal = Math.sqrt(W * W + H * H + D * D);
-  const camDist = Math.max(2.5, diagonal * 1.5);
 
   return (
-    <div className="relative">
-      <div className="h-[620px] w-full overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-muted/40 via-background to-muted/60 shadow-inner">
-        <Canvas
-          shadows
-          camera={{ position: [camDist, camDist * 0.7, camDist], fov: 35 }}
-          dpr={[1, 2]}
-        >
-          <color attach="background" args={["#f4f4f5"]} />
-          <fog attach="fog" args={["#f4f4f5", 12, 40]} />
+    <>
+      <Suspense fallback={null}>
+        <Environment preset="apartment" background={false} />
 
-          {/* Iluminación tipo showroom */}
-          <ambientLight intensity={0.45} />
-          <directionalLight
-            position={[6, 10, 5]}
-            intensity={1.1}
-            castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-            shadow-bias={-0.0005}
-          />
-          <directionalLight position={[-4, 6, -3]} intensity={0.35} />
-          <pointLight position={[W / 2, H + 0.5, D / 2]} intensity={0.4} color="#fff5e0" />
-
-          <Suspense fallback={null}>
-            <Environment preset="apartment" background={false} />
-
+        {showFloor ? (
+          <>
             <Grid
               position={[0, -0.001, 0]}
               args={[40, 40]}
@@ -112,7 +96,6 @@ export function Armario3DPro({
               fadeStrength={1.5}
               infiniteGrid
             />
-
             <ContactShadows
               position={[W / 2, 0, D / 2]}
               opacity={0.45}
@@ -122,59 +105,96 @@ export function Armario3DPro({
               resolution={512}
               color="#1f1f22"
             />
+          </>
+        ) : null}
 
-            {/* Hueco empotrado */}
-            {tipo_instalacion === "empotrado" && margen > 0 ? (
-              <mesh position={[W / 2, H / 2, D / 2 - 0.005]}>
-                <boxGeometry args={[W + 2 * margen, H + 2 * margen, D + margen]} />
-                <meshStandardMaterial color="#f59e0b" transparent opacity={0.04} />
-                <Edges color="#f59e0b" lineWidth={1.5} />
-              </mesh>
-            ) : null}
+        {tipo_instalacion === "empotrado" && margen > 0 ? (
+          <mesh position={[W / 2, H / 2, D / 2 - 0.005]}>
+            <boxGeometry args={[W + 2 * margen, H + 2 * margen, D + margen]} />
+            <meshStandardMaterial color="#f59e0b" transparent opacity={0.04} />
+            <Edges color="#f59e0b" lineWidth={1.5} />
+          </mesh>
+        ) : null}
 
-            {/* Bounding armario */}
-            <mesh position={[W / 2, H / 2, D / 2]}>
-              <boxGeometry args={[W, H, D]} />
-              <meshBasicMaterial color="#18181b" transparent opacity={0.02} />
-              <Edges color="#27272a" lineWidth={1.5} />
-            </mesh>
+        <mesh position={[W / 2, H / 2, D / 2]}>
+          <boxGeometry args={[W, H, D]} />
+          <meshBasicMaterial color="#18181b" transparent opacity={0.02} />
+          <Edges color="#27272a" lineWidth={1.5} />
+        </mesh>
 
-            {modulos.map((m) => (
-              <ModuloMesh
-                key={m.id}
-                modulo={m}
-                otrosModulos={modulos.filter((x) => x.id !== m.id)}
-                armarioAnchoMm={armario_ancho_mm}
-                armarioAltoMm={armario_alto_mm}
-                acabado={acabado}
-                k={k}
-                H={H}
-                D={D}
-                isSelected={selectedId === m.id}
-                onClick={() => onSelect(m.id === selectedId ? null : m.id)}
-                onMoveEnd={(xmm, ymm) => {
-                  setDragging(false);
-                  start(() => {
-                    onMove(m.id, xmm, ymm).catch((err) => {
-                      toast.error(err instanceof Error ? err.message : "Error al mover módulo");
-                    });
-                  });
-                }}
-                onDragStart={() => setDragging(true)}
-              />
-            ))}
+        {modulos.map((m) => (
+          <ModuloMesh
+            key={m.id}
+            modulo={m}
+            otrosModulos={modulos.filter((x) => x.id !== m.id)}
+            armarioAnchoMm={armario_ancho_mm}
+            armarioAltoMm={armario_alto_mm}
+            acabado={acabado}
+            k={k}
+            H={H}
+            D={D}
+            isSelected={selectedId === m.id}
+            onClick={() => onSelect(m.id === selectedId ? null : m.id)}
+            onMoveEnd={(xmm, ymm) => {
+              setDragging(false);
+              start(() => {
+                onMove(m.id, xmm, ymm).catch((err) => {
+                  toast.error(err instanceof Error ? err.message : "Error al mover módulo");
+                });
+              });
+            }}
+            onDragStart={() => setDragging(true)}
+          />
+        ))}
 
-            <OrbitControls
-              enableDamping
-              dampingFactor={0.1}
-              target={[W / 2, H / 2, D / 2]}
-              minDistance={1}
-              maxDistance={25}
-              enableRotate={!dragging}
-              enablePan={!dragging}
-              enableZoom={!dragging}
-            />
-          </Suspense>
+        {showControls ? (
+          <OrbitControls
+            enableDamping
+            dampingFactor={0.1}
+            target={[W / 2, H / 2, D / 2]}
+            minDistance={1}
+            maxDistance={25}
+            enableRotate={!dragging}
+            enablePan={!dragging}
+            enableZoom={!dragging}
+          />
+        ) : null}
+      </Suspense>
+    </>
+  );
+}
+
+/** Wrapper con Canvas + iluminación showroom. Usado en el editor principal. */
+export function Armario3DPro(props: Props) {
+  const k = 0.001;
+  const W = props.armario_ancho_mm * k;
+  const H = props.armario_alto_mm * k;
+  const D = props.armario_fondo_mm * k;
+  const diagonal = Math.sqrt(W * W + H * H + D * D);
+  const camDist = Math.max(2.5, diagonal * 1.5);
+
+  return (
+    <div className="relative">
+      <div className="h-[620px] w-full overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-muted/40 via-background to-muted/60 shadow-inner">
+        <Canvas
+          shadows
+          camera={{ position: [camDist, camDist * 0.7, camDist], fov: 35 }}
+          dpr={[1, 1.75]}
+        >
+          <color attach="background" args={["#f4f4f5"]} />
+          <fog attach="fog" args={["#f4f4f5", 12, 40]} />
+          <ambientLight intensity={0.45} />
+          <directionalLight
+            position={[6, 10, 5]}
+            intensity={1.1}
+            castShadow
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
+            shadow-bias={-0.0005}
+          />
+          <directionalLight position={[-4, 6, -3]} intensity={0.35} />
+          <pointLight position={[W / 2, H + 0.5, D / 2]} intensity={0.4} color="#fff5e0" />
+          <ArmarioScene {...props} />
         </Canvas>
       </div>
 

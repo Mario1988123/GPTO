@@ -2,14 +2,13 @@
 
 import { useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, ContactShadows, Environment } from "@react-three/drei";
-import { Suspense } from "react";
+import { OrbitControls } from "@react-three/drei";
 import { Upload, Download, RotateCcw, Camera, Sparkles, Loader2 } from "lucide-react";
 import html2canvas from "html2canvas-pro";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { ModuloPro } from "./armario-3d-pro";
-import { Armario3DPro } from "./armario-3d-pro";
+import { ArmarioScene } from "./armario-3d-pro";
 
 type Props = {
   armario_ancho_mm: number;
@@ -196,23 +195,37 @@ export function ARPreview(props: Props) {
               }}
             >
               <Canvas
-                shadows
                 camera={{ position: [2.5, 1.8, 3], fov: 35 }}
-                gl={{ preserveDrawingBuffer: true, alpha: true }}
+                gl={{
+                  preserveDrawingBuffer: true,
+                  alpha: true,
+                  powerPreference: "low-power",
+                  antialias: true,
+                }}
+                dpr={[1, 1.5]}
                 style={{ background: "transparent" }}
+                onCreated={({ gl }) => {
+                  const canvas = gl.domElement;
+                  canvas.addEventListener("webglcontextlost", (e) => {
+                    e.preventDefault();
+                    toast.error("WebGL perdió el contexto. Recarga la página si no se recupera.");
+                  });
+                  canvas.addEventListener("webglcontextrestored", () => {
+                    toast.success("WebGL restaurado");
+                  });
+                }}
               >
-                <ambientLight intensity={0.5} />
-                <directionalLight position={[5, 8, 5]} intensity={1.1} castShadow />
-                <Suspense fallback={null}>
-                  <Environment preset="apartment" background={false} />
-                  <Armario3DPro
-                    {...props}
-                    selectedId={null}
-                    onSelect={() => {}}
-                    onMove={async () => {}}
-                  />
-                  <ContactShadows position={[0, 0, 0]} opacity={0.6} scale={6} blur={2.5} far={4} />
-                </Suspense>
+                <ambientLight intensity={0.7} />
+                <directionalLight position={[5, 8, 5]} intensity={1.0} />
+                <directionalLight position={[-3, 5, -2]} intensity={0.3} />
+                <ArmarioScene
+                  {...props}
+                  selectedId={null}
+                  onSelect={() => {}}
+                  onMove={async () => {}}
+                  showFloor={false}
+                  showControls={false}
+                />
                 <OrbitControls enableDamping dampingFactor={0.1} minDistance={2} maxDistance={10} />
               </Canvas>
             </div>
