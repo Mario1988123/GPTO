@@ -1,7 +1,20 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ArrowLeft, Plus, Package } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { ActivoPill, ToastFromSearchParams, euros } from "../shared";
+import { ActivoPill, ToastFromSearchParams, VerSelect, euros } from "../shared";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -36,49 +49,71 @@ export default async function ReferenciasTableroPage({
   const { data } = await q.returns<Fila[]>();
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-6 py-8">
       <Suspense><ToastFromSearchParams /></Suspense>
-      <nav className="text-sm"><Link href="/app/catalogo" className="text-zinc-500 hover:underline dark:text-zinc-400">← Catálogo</Link></nav>
-      <div className="mt-2 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">Referencias de tablero</h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">SKU real = material + acabado + grosor + precio/m².</p>
-        </div>
-        <Link href="/app/catalogo/referencias-tablero/nuevo" className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">+ Nueva</Link>
-      </div>
-      <form className="mt-4 flex items-end gap-2">
-        <select name="ver" defaultValue={ver} className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
-          <option value="activos">Activos</option><option value="inactivos">Inactivos</option><option value="todos">Todos</option>
-        </select>
-        <button type="submit" className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950">Filtrar</button>
-      </form>
-      <div className="mt-6 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <Link href="/app/catalogo" className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Catálogo
+      </Link>
+      <PageHeader
+        eyebrow="Catálogo"
+        title="Referencias de tablero"
+        description="SKU real: material + acabado + grosor + precio por m²."
+        actions={
+          <Link href="/app/catalogo/referencias-tablero/nuevo" className={buttonVariants()}>
+            <Plus className="h-4 w-4" />
+            Nueva referencia
+          </Link>
+        }
+      />
+      <div className="mt-6"><VerSelect ver={ver} /></div>
+      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {!data || data.length === 0 ? (
-          <div className="p-10 text-center text-sm text-zinc-500 dark:text-zinc-400">Sin referencias. Crea materiales y acabados antes.</div>
+          <div className="p-6">
+            <EmptyState
+              icon={Package}
+              title="Sin referencias"
+              description="Crea primero los materiales y acabados, luego crea referencias combinando ambos con grosor y precio."
+            />
+          </div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/50 dark:text-zinc-400">
-              <tr><th className="px-4 py-2 font-medium">Material</th><th className="px-4 py-2 font-medium">Acabado</th><th className="px-4 py-2 font-medium">Grosor</th><th className="px-4 py-2 font-medium">Precio/m²</th><th className="px-4 py-2 font-medium">Veta</th><th className="px-4 py-2 font-medium">Proveedor</th><th className="px-4 py-2 font-medium">Estado</th></tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Material</TableHead>
+                <TableHead>Acabado</TableHead>
+                <TableHead>Grosor</TableHead>
+                <TableHead className="text-right">Precio / m²</TableHead>
+                <TableHead>Veta</TableHead>
+                <TableHead>Proveedor</TableHead>
+                <TableHead>Estado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {data.map((r) => (
-                <tr key={r.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-4 py-3">
-                    <Link href={`/app/catalogo/referencias-tablero/${r.id}`} className="font-medium hover:underline">
+                <TableRow key={r.id}>
+                  <TableCell>
+                    <Link href={`/app/catalogo/referencias-tablero/${r.id}`} className="font-semibold">
                       {r.materiales?.nombre ?? "—"}
                     </Link>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{r.materiales?.categoria}</p>
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{r.acabados?.nombre ?? "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{r.grosor_mm} mm</td>
-                  <td className="px-4 py-3 font-mono">{euros(r.precio_m2)}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{r.respeta_veta ? "sí" : "no"}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{r.proveedores?.nombre ?? "—"}</td>
-                  <td className="px-4 py-3"><ActivoPill activo={r.activo} /></td>
-                </tr>
+                    <p className="text-xs text-muted-foreground">{r.materiales?.categoria}</p>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{r.acabados?.nombre ?? "—"}</TableCell>
+                  <TableCell className="font-mono text-xs">{r.grosor_mm} mm</TableCell>
+                  <TableCell className="text-right font-mono font-bold tabular-nums">{euros(r.precio_m2)}</TableCell>
+                  <TableCell>
+                    {r.respeta_veta ? (
+                      <Badge className="bg-blue-500/10 text-blue-700 hover:bg-blue-500/15 dark:text-blue-400">Veta</Badge>
+                    ) : (
+                      <Badge variant="secondary">Libre</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{r.proveedores?.nombre ?? "—"}</TableCell>
+                  <TableCell><ActivoPill activo={r.activo} /></TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

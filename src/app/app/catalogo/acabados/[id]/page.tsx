@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { actualizar, alternar, eliminar } from "../actions";
 import { AcabadoForm } from "../form";
-import { ActivoPill, ToastFromSearchParams } from "../../shared";
+import { ActivoPill, CatalogoDetalleActions, CatalogoFormCard, ToastFromSearchParams } from "../../shared";
 import type { Acabado } from "@/lib/tipos/catalogo";
+import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -22,29 +24,27 @@ export default async function DetalleAcabadoPage({ params }: { params: Promise<{
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
       <Suspense><ToastFromSearchParams /></Suspense>
-      <nav className="text-sm"><Link href="/app/catalogo/acabados" className="text-zinc-500 hover:underline dark:text-zinc-400">← Acabados</Link></nav>
-      <div className="mt-2 flex items-baseline justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="inline-block h-8 w-8 rounded border border-zinc-300 dark:border-zinc-700" style={{ backgroundColor: a.color_hex ?? "transparent" }} />
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">{a.nombre}</h1>
-        </div>
-        <ActivoPill activo={a.activo} />
-      </div>
-      <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <Link href="/app/catalogo/acabados" className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Acabados
+      </Link>
+      <PageHeader
+        eyebrow="Acabado"
+        title={a.nombre}
+        actions={
+          <div className="flex items-center gap-3">
+            <span
+              className="inline-block h-8 w-8 rounded-md border border-border shadow-sm"
+              style={{ backgroundColor: a.color_hex ?? "transparent" }}
+            />
+            <ActivoPill activo={a.activo} />
+          </div>
+        }
+      />
+      <CatalogoFormCard>
         <AcabadoForm acabado={a} action={update} submitLabel="Guardar cambios" />
-      </div>
-      <div className="mt-6 flex flex-wrap items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-        <form action={toggle}>
-          <button type="submit" className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950">
-            {a.activo ? "Desactivar" : "Reactivar"}
-          </button>
-        </form>
-        <form action={del}>
-          <button type="submit" className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 dark:border-red-900 dark:bg-zinc-950 dark:text-red-300">
-            Eliminar
-          </button>
-        </form>
-      </div>
+      </CatalogoFormCard>
+      <CatalogoDetalleActions activo={a.activo} toggle={toggle} del={del} />
     </div>
   );
 }

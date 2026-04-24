@@ -1,8 +1,20 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ArrowLeft, Plus, Palette } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { ActivoPill, ToastFromSearchParams } from "../shared";
+import { ActivoPill, ToastFromSearchParams, VerSelect } from "../shared";
 import type { Acabado } from "@/lib/tipos/catalogo";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -15,44 +27,55 @@ export default async function AcabadosPage({ searchParams }: { searchParams: Pro
   const { data } = await q.returns<Acabado[]>();
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
+    <div className="mx-auto max-w-6xl px-6 py-8">
       <Suspense><ToastFromSearchParams /></Suspense>
-      <nav className="text-sm"><Link href="/app/catalogo" className="text-zinc-500 hover:underline dark:text-zinc-400">← Catálogo</Link></nav>
-      <div className="mt-2 flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">Acabados</h1>
-        <Link href="/app/catalogo/acabados/nuevo" className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">+ Nuevo</Link>
-      </div>
-      <form className="mt-4 flex items-end gap-2">
-        <select name="ver" defaultValue={ver} className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
-          <option value="activos">Activos</option><option value="inactivos">Inactivos</option><option value="todos">Todos</option>
-        </select>
-        <button type="submit" className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950">Filtrar</button>
-      </form>
-      <div className="mt-6 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <Link href="/app/catalogo" className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Catálogo
+      </Link>
+      <PageHeader
+        eyebrow="Catálogo"
+        title="Acabados"
+        description="Colores y texturas disponibles."
+        actions={
+          <Link href="/app/catalogo/acabados/nuevo" className={buttonVariants()}>
+            <Plus className="h-4 w-4" />
+            Nuevo acabado
+          </Link>
+        }
+      />
+      <div className="mt-6"><VerSelect ver={ver} /></div>
+      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {!data || data.length === 0 ? (
-          <div className="p-10 text-center text-sm text-zinc-500 dark:text-zinc-400">Sin acabados.</div>
+          <div className="p-6"><EmptyState icon={Palette} title="Sin acabados" description="Crea el primer acabado con su color y textura." /></div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/50 dark:text-zinc-400">
-              <tr><th className="px-4 py-2 font-medium">Color</th><th className="px-4 py-2 font-medium">Nombre</th><th className="px-4 py-2 font-medium">Código</th><th className="px-4 py-2 font-medium">Textura</th><th className="px-4 py-2 font-medium">Estado</th></tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-16">Color</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Código</TableHead>
+                <TableHead>Textura</TableHead>
+                <TableHead>Estado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {data.map((a) => (
-                <tr key={a.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-4 py-3">
+                <TableRow key={a.id}>
+                  <TableCell>
                     <span
-                      className="inline-block h-6 w-6 rounded border border-zinc-300 dark:border-zinc-700"
+                      className="inline-block h-7 w-7 rounded-md border border-border shadow-sm"
                       style={{ backgroundColor: a.color_hex ?? "transparent" }}
                     />
-                  </td>
-                  <td className="px-4 py-3"><Link href={`/app/catalogo/acabados/${a.id}`} className="font-medium hover:underline">{a.nombre}</Link></td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{a.codigo ?? "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{a.textura ?? "—"}</td>
-                  <td className="px-4 py-3"><ActivoPill activo={a.activo} /></td>
-                </tr>
+                  </TableCell>
+                  <TableCell><Link href={`/app/catalogo/acabados/${a.id}`} className="font-semibold">{a.nombre}</Link></TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{a.codigo ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{a.textura ?? "—"}</TableCell>
+                  <TableCell><ActivoPill activo={a.activo} /></TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { crearTipo } from "../actions";
 import { TipoModuloForm } from "../tipo-form";
-import { ToastFromSearchParams } from "../../catalogo/shared";
+import { CatalogoFormCard, ToastFromSearchParams } from "../../catalogo/shared";
+import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -18,15 +20,19 @@ export default async function NuevoTipoPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
       <Suspense><ToastFromSearchParams /></Suspense>
-      <nav className="text-sm"><Link href="/app/tipos-modulo" className="text-zinc-500 hover:underline dark:text-zinc-400">← Tipos de módulo</Link></nav>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">Nuevo tipo de módulo</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        Crea primero el tipo con sus dimensiones por defecto. Luego podrás añadir piezas y herrajes en la pantalla de detalle.
-      </p>
-      <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <Link href="/app/tipos-modulo" className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Tipos de módulo
+      </Link>
+      <PageHeader
+        eyebrow="Configuración"
+        title="Nuevo tipo de módulo"
+        description="Crea primero el tipo con sus dimensiones por defecto. Luego podrás añadir piezas y herrajes en la pantalla de detalle."
+      />
+      <CatalogoFormCard>
         {/* @ts-expect-error relación supabase llega como objeto/array según tipos */}
         <TipoModuloForm referencias={referencias ?? []} action={crearTipo} submitLabel="Crear tipo" />
-      </div>
+      </CatalogoFormCard>
     </div>
   );
 }

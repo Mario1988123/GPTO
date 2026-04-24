@@ -1,12 +1,34 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { FolderKanban, Plus, ChevronRight, Boxes } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ToastFromSearchParams } from "../catalogo/shared";
 import { ESTADOS_PROYECTO, type EstadoProyecto } from "@/lib/tipos/proyectos";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
 const LBL = Object.fromEntries(ESTADOS_PROYECTO.map((e) => [e.value, e]));
+
+const ESTADO_VARIANT: Record<EstadoProyecto, string> = {
+  borrador: "bg-muted text-muted-foreground",
+  presupuestado: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  confirmado: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  en_fabricacion: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  entregado: "bg-violet-500/10 text-violet-700 dark:text-violet-400",
+  cancelado: "bg-red-500/10 text-red-700 dark:text-red-400",
+};
 
 type Fila = {
   id: string;
@@ -33,64 +55,113 @@ export default async function ProyectosPage({
   const { data } = await q.returns<Fila[]>();
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <Suspense><ToastFromSearchParams /></Suspense>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">Proyectos</h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Un proyecto agrupa los armarios a fabricar para un cliente.
-          </p>
-        </div>
-        <Link href="/app/proyectos/nuevo" className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
-          + Nuevo proyecto
-        </Link>
-      </div>
+    <div className="mx-auto max-w-7xl px-6 py-8">
+      <Suspense>
+        <ToastFromSearchParams />
+      </Suspense>
 
-      <form className="mt-4 flex items-end gap-2">
-        <select name="estado" defaultValue={estado} className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
-          <option value="">Todos los estados</option>
-          {ESTADOS_PROYECTO.map((e) => <option key={e.value} value={e.value}>{e.label}</option>)}
-        </select>
-        <button type="submit" className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950">Filtrar</button>
+      <PageHeader
+        eyebrow="Taller"
+        title="Proyectos"
+        description="Un proyecto agrupa los armarios a fabricar para un cliente."
+        actions={
+          <Link href="/app/proyectos/nuevo" className={buttonVariants()}>
+            <Plus className="h-4 w-4" />
+            Nuevo proyecto
+          </Link>
+        }
+      />
+
+      <form className="mt-6 flex flex-wrap items-end gap-3">
+        <div className="w-[220px] space-y-1.5">
+          <label htmlFor="estado" className="text-xs font-medium text-muted-foreground">
+            Estado
+          </label>
+          <select
+            id="estado"
+            name="estado"
+            defaultValue={estado}
+            className="flex h-9 w-full items-center rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+          >
+            <option value="">Todos los estados</option>
+            {ESTADOS_PROYECTO.map((e) => (
+              <option key={e.value} value={e.value}>
+                {e.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Button type="submit" variant="outline">
+          Filtrar
+        </Button>
       </form>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {!data || data.length === 0 ? (
-          <div className="p-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
-            No hay proyectos{estado ? ` en estado "${LBL[estado]?.label ?? estado}"` : ""}.
+          <div className="p-6">
+            <EmptyState
+              icon={FolderKanban}
+              title={estado ? `Sin proyectos en estado "${LBL[estado]?.label ?? estado}"` : "Aún no hay proyectos"}
+              description="Crea un proyecto y empieza a diseñar armarios en 3D para tus clientes."
+              action={
+                !estado ? (
+                  <Link href="/app/proyectos/nuevo" className={buttonVariants()}>
+                    <Plus className="h-4 w-4" />
+                    Crear proyecto
+                  </Link>
+                ) : null
+              }
+            />
           </div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/50 dark:text-zinc-400">
-              <tr>
-                <th className="px-4 py-2 font-medium">Proyecto</th>
-                <th className="px-4 py-2 font-medium">Cliente</th>
-                <th className="px-4 py-2 font-medium">Armarios</th>
-                <th className="px-4 py-2 font-medium">Estado</th>
-                <th className="px-4 py-2 font-medium">Actualizado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Proyecto</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead className="text-right">Armarios</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Actualizado</TableHead>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {data.map((p) => (
-                <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-4 py-3">
-                    <Link href={`/app/proyectos/${p.id}`} className="font-medium hover:underline">{p.nombre}</Link>
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{p.clientes?.nombre ?? "—"}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{p.armarios?.[0]?.count ?? 0}</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${LBL[p.estado]?.color ?? ""}`}>
-                      {LBL[p.estado]?.label ?? p.estado}
+                <TableRow key={p.id} className="group">
+                  <TableCell>
+                    <Link href={`/app/proyectos/${p.id}`} className="font-semibold">
+                      {p.nombre}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {p.clientes?.nombre ?? "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Boxes className="h-3.5 w-3.5" />
+                      <span className="font-mono font-semibold text-foreground">{p.armarios?.[0]?.count ?? 0}</span>
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400">
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={`${ESTADO_VARIANT[p.estado] ?? ""} border-0 hover:opacity-90`}>
+                      {LBL[p.estado]?.label ?? p.estado}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
                     {new Date(p.updated_at).toLocaleDateString("es-ES")}
-                  </td>
-                </tr>
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/app/proyectos/${p.id}`}
+                      className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-muted hover:text-foreground"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

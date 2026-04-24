@@ -1,8 +1,21 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ArrowLeft, Plus, Wrench } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ActivoPill, ToastFromSearchParams, euros } from "../shared";
 import { TIPOS_HERRAJE } from "@/lib/tipos/catalogo";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -34,42 +47,73 @@ export default async function HerrajesPage({ searchParams }: { searchParams: Pro
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <Suspense><ToastFromSearchParams /></Suspense>
-      <nav className="text-sm"><Link href="/app/catalogo" className="text-zinc-500 hover:underline dark:text-zinc-400">← Catálogo</Link></nav>
-      <div className="mt-2 flex items-center justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">Herrajes</h1>
-        <Link href="/app/catalogo/herrajes/nuevo" className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">+ Nuevo</Link>
-      </div>
-      <form className="mt-4 flex flex-wrap items-end gap-2">
-        <select name="ver" defaultValue={ver} className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
-          <option value="activos">Activos</option><option value="inactivos">Inactivos</option><option value="todos">Todos</option>
-        </select>
-        <select name="tipo" defaultValue={tipo} className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
-          <option value="">Todos los tipos</option>
-          {TIPOS_HERRAJE.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-        <button type="submit" className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950">Filtrar</button>
+      <Link href="/app/catalogo" className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Catálogo
+      </Link>
+      <PageHeader
+        eyebrow="Catálogo"
+        title="Herrajes"
+        description="Bisagras, tiradores, guías, patas, portarrollos..."
+        actions={
+          <Link href="/app/catalogo/herrajes/nuevo" className={buttonVariants()}>
+            <Plus className="h-4 w-4" />
+            Nuevo herraje
+          </Link>
+        }
+      />
+
+      <form className="mt-6 flex flex-wrap items-end gap-3">
+        <div className="w-[180px] space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Ver</label>
+          <select name="ver" defaultValue={ver} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15">
+            <option value="activos">Activos</option>
+            <option value="inactivos">Inactivos</option>
+            <option value="todos">Todos</option>
+          </select>
+        </div>
+        <div className="w-[200px] space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Tipo</label>
+          <select name="tipo" defaultValue={tipo} className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15">
+            <option value="">Todos los tipos</option>
+            {TIPOS_HERRAJE.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </div>
+        <button type="submit" className="inline-flex h-9 items-center rounded-md border border-border bg-background px-4 text-sm font-medium transition hover:bg-muted">Filtrar</button>
       </form>
-      <div className="mt-6 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+
+      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {!data || data.length === 0 ? (
-          <div className="p-10 text-center text-sm text-zinc-500 dark:text-zinc-400">Sin herrajes.</div>
+          <div className="p-6"><EmptyState icon={Wrench} title="Sin herrajes" description="Añade el primer herraje (bisagra, tirador, guía...)." /></div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/50 dark:text-zinc-400">
-              <tr><th className="px-4 py-2 font-medium">Tipo</th><th className="px-4 py-2 font-medium">Nombre</th><th className="px-4 py-2 font-medium">Precio/ud</th><th className="px-4 py-2 font-medium">Stock</th><th className="px-4 py-2 font-medium">Proveedor</th><th className="px-4 py-2 font-medium">Estado</th></tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tipo</TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead className="text-right">Precio / ud</TableHead>
+                <TableHead className="text-right">Stock</TableHead>
+                <TableHead>Proveedor</TableHead>
+                <TableHead>Estado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {data.map((h) => (
-                <tr key={h.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{LABEL_TIPO[h.tipo] ?? h.tipo}</td>
-                  <td className="px-4 py-3"><Link href={`/app/catalogo/herrajes/${h.id}`} className="font-medium hover:underline">{h.nombre}</Link></td>
-                  <td className="px-4 py-3 font-mono">{euros(h.precio_unidad)}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{h.stock_disponible}</td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">{h.proveedores?.nombre ?? "—"}</td>
-                  <td className="px-4 py-3"><ActivoPill activo={h.activo} /></td>
-                </tr>
+                <TableRow key={h.id}>
+                  <TableCell><Badge variant="secondary" className="font-normal">{LABEL_TIPO[h.tipo] ?? h.tipo}</Badge></TableCell>
+                  <TableCell><Link href={`/app/catalogo/herrajes/${h.id}`} className="font-semibold">{h.nombre}</Link></TableCell>
+                  <TableCell className="text-right font-mono font-bold tabular-nums">{euros(h.precio_unidad)}</TableCell>
+                  <TableCell className="text-right font-mono tabular-nums">
+                    <span className={h.stock_disponible <= 5 ? "text-amber-700 dark:text-amber-400 font-bold" : ""}>
+                      {h.stock_disponible}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{h.proveedores?.nombre ?? "—"}</TableCell>
+                  <TableCell><ActivoPill activo={h.activo} /></TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

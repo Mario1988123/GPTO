@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ArrowLeft, Trash2, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   actualizarTipo,
@@ -13,7 +14,12 @@ import {
 } from "../actions";
 import { TipoModuloForm } from "../tipo-form";
 import { PiezaForm } from "../pieza-form";
-import { ActivoPill, ToastFromSearchParams, euros } from "../../catalogo/shared";
+import {
+  ActivoPill,
+  CatalogoFormCard,
+  ToastFromSearchParams,
+  euros,
+} from "../../catalogo/shared";
 import {
   FUENTES_DIM,
   LADOS_CANTO,
@@ -21,6 +27,17 @@ import {
   type TipoModulo,
   type TipoModuloPieza,
 } from "@/lib/tipos/tipos_modulo";
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/empty-state";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +46,7 @@ type PiezaVista = TipoModuloPieza & {
   canto: { nombre: string } | null;
 };
 
-const FUENTE_LBL = Object.fromEntries(FUENTES_DIM.map((f) => [f.value, f.label]));
+void FUENTES_DIM;
 const LADOS_LBL = Object.fromEntries(LADOS_CANTO.map((l) => [l.value, l.label]));
 
 export default async function DetalleTipoModuloPage({ params }: { params: Promise<{ id: string }> }) {
@@ -69,73 +86,83 @@ export default async function DetalleTipoModuloPage({ params }: { params: Promis
   }));
   const cantosOpciones = (cantos ?? []).map((c) => ({ id: c.id as string, label: c.nombre as string }));
 
-  // --- server actions bound al id ---
   const updateTipo = async (fd: FormData) => { "use server"; await actualizarTipo(id, fd); };
   const toggleTipo = async () => { "use server"; await alternarTipo(id, !tipo.activo); };
   const delTipo = async () => { "use server"; await eliminarTipo(id); };
   const addPieza = async (fd: FormData) => { "use server"; await crearPieza(id, fd); };
   const addHerraje = async (fd: FormData) => { "use server"; await asociarHerraje(id, fd); };
 
-  // --- calcular dimensiones de cada pieza con los defaults del tipo ---
   const grosorDefault = tipo.referencia_tablero_default?.grosor_mm ?? 16;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
+    <div className="mx-auto max-w-6xl px-6 py-8">
       <Suspense><ToastFromSearchParams /></Suspense>
-      <nav className="text-sm"><Link href="/app/tipos-modulo" className="text-zinc-500 hover:underline dark:text-zinc-400">← Tipos de módulo</Link></nav>
+      <Link href="/app/tipos-modulo" className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Tipos de módulo
+      </Link>
+      <PageHeader eyebrow="Tipo de módulo" title={tipo.nombre} actions={<ActivoPill activo={tipo.activo} />} />
 
-      <div className="mt-2 flex items-baseline justify-between gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">{tipo.nombre}</h1>
-        <ActivoPill activo={tipo.activo} />
-      </div>
-
-      {/* Sección 1: datos generales */}
-      <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">Datos generales</h2>
+      {/* Datos generales */}
+      <CatalogoFormCard>
+        <div className="mb-6">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Configuración</p>
+          <h2 className="mt-0.5 text-lg font-bold tracking-tight">Datos generales</h2>
+        </div>
         {/* @ts-expect-error relacion supabase */}
         <TipoModuloForm tipo={tipo} referencias={refs ?? []} action={updateTipo} submitLabel="Guardar cambios" />
-        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
           <form action={toggleTipo}>
-            <button type="submit" className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950">
+            <Button type="submit" variant="outline" size="sm">
               {tipo.activo ? "Desactivar" : "Reactivar"}
-            </button>
+            </Button>
           </form>
           <form action={delTipo}>
-            <button type="submit" className="rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 dark:border-red-900 dark:bg-zinc-950 dark:text-red-300">
+            <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              className="border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
               Eliminar tipo
-            </button>
+            </Button>
           </form>
         </div>
-      </section>
+      </CatalogoFormCard>
 
-      {/* Sección 2: piezas */}
-      <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mb-4 flex items-baseline justify-between">
-          <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-100">Piezas</h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Dimensiones calculadas con defaults del tipo ({tipo.ancho_default_mm}×{tipo.alto_default_mm}×{tipo.fondo_default_mm} mm, grosor tablero {grosorDefault} mm).
+      {/* Piezas */}
+      <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Plantilla</p>
+            <h2 className="mt-0.5 text-lg font-bold tracking-tight">Piezas</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Calculado con defaults: {tipo.ancho_default_mm}×{tipo.alto_default_mm}×{tipo.fondo_default_mm} mm · grosor {grosorDefault} mm
           </p>
         </div>
 
         {(piezas ?? []).length === 0 ? (
-          <p className="rounded-md bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
-            Aún no hay piezas. Añade la primera abajo.
-          </p>
+          <EmptyState
+            title="Sin piezas"
+            description="Añade la primera pieza usando el formulario de abajo."
+          />
         ) : (
-          <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950/50 dark:text-zinc-400">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Pieza</th>
-                  <th className="px-3 py-2 font-medium">Cantidad</th>
-                  <th className="px-3 py-2 font-medium">Fórmula largo</th>
-                  <th className="px-3 py-2 font-medium">Fórmula ancho</th>
-                  <th className="px-3 py-2 font-medium">Calculado</th>
-                  <th className="px-3 py-2 font-medium">Canto</th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pieza</TableHead>
+                  <TableHead>Cantidad</TableHead>
+                  <TableHead>Largo</TableHead>
+                  <TableHead>Ancho</TableHead>
+                  <TableHead>Calculado</TableHead>
+                  <TableHead>Canto</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {(piezas ?? []).map((p) => {
                   const modulo = {
                     ancho_mm: tipo.ancho_default_mm,
@@ -161,56 +188,64 @@ export default async function DetalleTipoModuloPage({ params }: { params: Promis
                   const fAncho = describir(p.fuente_ancho, p.ajuste_ancho_mm, p.ajuste_ancho_grosores, p.valor_ancho_fijo_mm);
                   const delPieza = async () => { "use server"; await eliminarPieza(id, p.id); };
                   return (
-                    <tr key={p.id}>
-                      <td className="px-3 py-2 font-medium">{p.nombre}</td>
-                      <td className="px-3 py-2 text-zinc-600 dark:text-zinc-400">{p.cantidad}</td>
-                      <td className="px-3 py-2 font-mono text-xs text-zinc-600 dark:text-zinc-400">{fLargo}</td>
-                      <td className="px-3 py-2 font-mono text-xs text-zinc-600 dark:text-zinc-400">{fAncho}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{largo} × {ancho} mm</td>
-                      <td className="px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400">
+                    <TableRow key={p.id}>
+                      <TableCell className="font-semibold">{p.nombre}</TableCell>
+                      <TableCell className="font-mono">{p.cantidad}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{fLargo}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{fAncho}</TableCell>
+                      <TableCell className="font-mono text-xs">{largo} × {ancho} mm</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
                         {p.canto?.nombre ? `${p.canto.nombre} · ${LADOS_LBL[p.lados_con_canto] ?? p.lados_con_canto}` : "—"}
-                      </td>
-                      <td className="px-3 py-2 text-right">
+                      </TableCell>
+                      <TableCell>
                         <form action={delPieza}>
-                          <button type="submit" className="text-xs text-red-700 hover:underline dark:text-red-300">Eliminar</button>
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </form>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
 
-        <div className="mt-4">
-          <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-zinc-100">Añadir pieza</h3>
+        <div className="mt-6 rounded-xl border border-dashed border-border bg-muted/20 p-4 sm:p-5">
+          <h3 className="mb-3 text-sm font-bold tracking-tight">Añadir pieza</h3>
           <PiezaForm action={addPieza} refTableros={refTablerosOpciones} cantos={cantosOpciones} />
         </div>
       </section>
 
-      {/* Sección 3: herrajes */}
-      <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-medium text-zinc-900 dark:text-zinc-100">Herrajes estándar</h2>
+      {/* Herrajes */}
+      <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="mb-6">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Plantilla</p>
+          <h2 className="mt-0.5 text-lg font-bold tracking-tight">Herrajes estándar</h2>
+        </div>
 
         {(herrajesRel ?? []).length === 0 ? (
-          <p className="rounded-md bg-zinc-50 p-4 text-sm text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
-            Ningún herraje asociado aún.
-          </p>
+          <EmptyState title="Sin herrajes" description="Asocia los herrajes que lleva este tipo de módulo por defecto." />
         ) : (
-          <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-950/50 dark:text-zinc-400">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Herraje</th>
-                  <th className="px-3 py-2 font-medium">Tipo</th>
-                  <th className="px-3 py-2 font-medium">Cantidad</th>
-                  <th className="px-3 py-2 font-medium">Coste unidad</th>
-                  <th className="px-3 py-2 font-medium">Coste total</th>
-                  <th className="px-3 py-2" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Herraje</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead className="text-right">Cantidad</TableHead>
+                  <TableHead className="text-right">Coste unidad</TableHead>
+                  <TableHead className="text-right">Coste total</TableHead>
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {(herrajesRel ?? []).map((r) => {
                   // @ts-expect-error relacion
                   const nombre = r.herraje?.nombre ?? "?";
@@ -221,29 +256,41 @@ export default async function DetalleTipoModuloPage({ params }: { params: Promis
                   const total = precio * r.cantidad;
                   const delR = async () => { "use server"; await desasociarHerraje(id, r.id); };
                   return (
-                    <tr key={r.id}>
-                      <td className="px-3 py-2 font-medium">{nombre}</td>
-                      <td className="px-3 py-2 text-zinc-600 dark:text-zinc-400">{tipo}</td>
-                      <td className="px-3 py-2 text-zinc-600 dark:text-zinc-400">{r.cantidad}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{euros(precio)}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{euros(total)}</td>
-                      <td className="px-3 py-2 text-right">
+                    <TableRow key={r.id}>
+                      <TableCell className="font-semibold">{nombre}</TableCell>
+                      <TableCell className="text-muted-foreground">{tipo}</TableCell>
+                      <TableCell className="text-right font-mono">{r.cantidad}</TableCell>
+                      <TableCell className="text-right font-mono text-xs">{euros(precio)}</TableCell>
+                      <TableCell className="text-right font-mono font-bold">{euros(total)}</TableCell>
+                      <TableCell>
                         <form action={delR}>
-                          <button type="submit" className="text-xs text-red-700 hover:underline dark:text-red-300">Quitar</button>
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </form>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
 
-        <form action={addHerraje} className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
-          <div className="flex-1 min-w-[220px] space-y-1">
-            <label htmlFor="herraje_id" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Herraje</label>
-            <select id="herraje_id" name="herraje_id" required className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950">
+        <form action={addHerraje} className="mt-6 flex flex-wrap items-end gap-3 rounded-xl border border-dashed border-border bg-muted/20 p-4">
+          <div className="min-w-[240px] flex-1 space-y-1.5">
+            <label htmlFor="herraje_id" className="block text-xs font-semibold text-muted-foreground">Herraje</label>
+            <select
+              id="herraje_id"
+              name="herraje_id"
+              required
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15"
+            >
               <option value="">— selecciona —</option>
               {(herrajesDisponibles ?? []).map((h) => (
                 <option key={h.id} value={h.id}>
@@ -252,17 +299,30 @@ export default async function DetalleTipoModuloPage({ params }: { params: Promis
               ))}
             </select>
           </div>
-          <div className="w-24 space-y-1">
-            <label htmlFor="cantidad" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Cantidad</label>
-            <input id="cantidad" name="cantidad" type="number" min="1" defaultValue="1" className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+          <div className="w-24 space-y-1.5">
+            <label htmlFor="cantidad" className="block text-xs font-semibold text-muted-foreground">Cantidad</label>
+            <input
+              id="cantidad"
+              name="cantidad"
+              type="number"
+              min="1"
+              defaultValue="1"
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 font-mono text-sm shadow-xs outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15"
+            />
           </div>
-          <div className="flex-1 min-w-[180px] space-y-1">
-            <label htmlFor="notas" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Notas</label>
-            <input id="notas" name="notas" type="text" className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+          <div className="min-w-[180px] flex-1 space-y-1.5">
+            <label htmlFor="notas" className="block text-xs font-semibold text-muted-foreground">Notas</label>
+            <input
+              id="notas"
+              name="notas"
+              type="text"
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15"
+            />
           </div>
-          <button type="submit" className="rounded-md bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
-            Añadir herraje
-          </button>
+          <Button type="submit">
+            <Plus className="h-4 w-4" />
+            Añadir
+          </Button>
         </form>
       </section>
     </div>

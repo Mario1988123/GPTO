@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ArrowLeft } from "lucide-react";
 import { crearCliente } from "../actions";
 import { ClienteForm } from "../cliente-form";
 import { ToastFromSearchParams } from "../toasts";
+import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -13,20 +15,21 @@ export default function NuevoClientePage() {
         <ToastFromSearchParams />
       </Suspense>
 
-      <nav className="text-sm">
-        <Link
-          href="/app/clientes"
-          className="text-zinc-500 hover:underline dark:text-zinc-400"
-        >
-          ← Clientes
-        </Link>
-      </nav>
+      <Link
+        href="/app/clientes"
+        className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Volver a clientes
+      </Link>
 
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-        Nuevo cliente
-      </h1>
+      <PageHeader
+        eyebrow="Nuevo registro"
+        title="Nuevo cliente"
+        description="Rellena los datos básicos para poder crear proyectos y facturar."
+      />
 
-      <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
         <ClienteForm action={crearCliente} submitLabel="Crear cliente" />
       </div>
     </div>

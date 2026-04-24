@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { crear } from "../actions";
 import { CantoForm } from "../form";
-import { ToastFromSearchParams } from "../../shared";
+import { CatalogoFormCard, ToastFromSearchParams } from "../../shared";
+import { PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +19,14 @@ export default async function NuevoCantoPage() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
       <Suspense><ToastFromSearchParams /></Suspense>
-      <nav className="text-sm"><Link href="/app/catalogo/cantos" className="text-zinc-500 hover:underline dark:text-zinc-400">← Cantos</Link></nav>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">Nuevo canto</h1>
-      <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <Link href="/app/catalogo/cantos" className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground">
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Cantos
+      </Link>
+      <PageHeader eyebrow="Catálogo" title="Nuevo canto" />
+      <CatalogoFormCard>
         <CantoForm acabados={acabados ?? []} proveedores={proveedores ?? []} action={crear} submitLabel="Crear canto" />
-      </div>
+      </CatalogoFormCard>
     </div>
   );
 }

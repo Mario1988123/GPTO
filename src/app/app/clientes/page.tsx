@@ -1,8 +1,29 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { Users, Plus, Search, Mail, Phone, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ToastFromSearchParams } from "./toasts";
 import type { Cliente } from "@/lib/tipos/cliente";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -26,123 +47,141 @@ export default async function ClientesPage({
   const { data: clientes, error } = await query;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-6 py-8">
       <Suspense>
         <ToastFromSearchParams />
       </Suspense>
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-            Clientes
-          </h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            {clientes?.length ?? 0} cliente(s){ver !== "todos" ? ` (${ver})` : ""}
-          </p>
-        </div>
-        <Link
-          href="/app/clientes/nuevo"
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          + Nuevo cliente
-        </Link>
-      </div>
+      <PageHeader
+        eyebrow="CRM"
+        title="Clientes"
+        description={`${clientes?.length ?? 0} cliente${(clientes?.length ?? 0) === 1 ? "" : "s"}${ver !== "todos" ? ` · ${ver}` : ""}`}
+        actions={
+          <Link href="/app/clientes/nuevo" className={buttonVariants()}>
+            <Plus className="h-4 w-4" />
+            Nuevo cliente
+          </Link>
+        }
+      />
 
       <form className="mt-6 flex flex-wrap items-end gap-3">
-        <div className="flex-1 min-w-[200px]">
-          <label
-            htmlFor="q"
-            className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-          >
-            Buscar por nombre
+        <div className="min-w-[240px] flex-1 space-y-1.5">
+          <label htmlFor="q" className="text-xs font-medium text-muted-foreground">
+            Buscar
           </label>
-          <input
-            id="q"
-            name="q"
-            defaultValue={q}
-            placeholder="..."
-            className="mt-1 w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950 dark:focus:border-zinc-100 dark:focus:ring-zinc-100"
-          />
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="q"
+              name="q"
+              defaultValue={q}
+              placeholder="Buscar por nombre..."
+              className="pl-9"
+            />
+          </div>
         </div>
-        <div>
-          <label
-            htmlFor="ver"
-            className="block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-          >
+        <div className="w-[180px] space-y-1.5">
+          <label htmlFor="ver" className="text-xs font-medium text-muted-foreground">
             Ver
           </label>
-          <select
-            id="ver"
-            name="ver"
-            defaultValue={ver}
-            className="mt-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-950"
-          >
-            <option value="activos">Activos</option>
-            <option value="inactivos">Inactivos</option>
-            <option value="todos">Todos</option>
-          </select>
+          <Select name="ver" defaultValue={ver}>
+            <SelectTrigger id="ver">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="activos">Activos</SelectItem>
+              <SelectItem value="inactivos">Inactivos</SelectItem>
+              <SelectItem value="todos">Todos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <button
-          type="submit"
-          className="rounded-md border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
-        >
+        <Button type="submit" variant="outline">
           Filtrar
-        </button>
+        </Button>
       </form>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {error ? (
-          <div className="p-6 text-sm text-red-600">Error cargando clientes: {error.message}</div>
+          <div className="p-6 text-sm text-destructive">Error cargando clientes: {error.message}</div>
         ) : !clientes || clientes.length === 0 ? (
-          <div className="p-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
-            No hay clientes{q ? ` para "${q}"` : ""}.
+          <div className="p-6">
+            <EmptyState
+              icon={Users}
+              title={q ? `Sin resultados para "${q}"` : "Aún no hay clientes"}
+              description={q ? "Prueba con otro término de búsqueda." : "Crea el primer cliente para empezar a gestionar proyectos."}
+              action={
+                !q ? (
+                  <Link href="/app/clientes/nuevo" className={buttonVariants()}>
+                    <Plus className="h-4 w-4" />
+                    Crear cliente
+                  </Link>
+                ) : null
+              }
+            />
           </div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/50 dark:text-zinc-400">
-              <tr>
-                <th className="px-4 py-2 font-medium">Nombre</th>
-                <th className="px-4 py-2 font-medium">NIF</th>
-                <th className="px-4 py-2 font-medium">Email</th>
-                <th className="px-4 py-2 font-medium">Teléfono</th>
-                <th className="px-4 py-2 font-medium">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>NIF</TableHead>
+                <TableHead>Contacto</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="w-10" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {(clientes as Pick<Cliente, "id" | "nombre" | "email" | "telefono" | "nif" | "activo" | "created_at">[]).map((c) => (
-                <tr key={c.id} className="transition hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                  <td className="px-4 py-3">
+                <TableRow key={c.id} className="group">
+                  <TableCell>
                     <Link
                       href={`/app/clientes/${c.id}`}
-                      className="font-medium text-zinc-950 hover:underline dark:text-zinc-50"
+                      className="font-semibold transition group-hover:text-foreground"
                     >
                       {c.nombre}
                     </Link>
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
+                  </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">
                     {c.nif ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {c.email ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400">
-                    {c.telefono ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    <div className="flex flex-col gap-0.5 text-xs">
+                      {c.email ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Mail className="h-3 w-3" />
+                          {c.email}
+                        </span>
+                      ) : null}
+                      {c.telefono ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Phone className="h-3 w-3" />
+                          {c.telefono}
+                        </span>
+                      ) : null}
+                      {!c.email && !c.telefono ? "—" : null}
+                    </div>
+                  </TableCell>
+                  <TableCell>
                     {c.activo ? (
-                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                        activo
-                      </span>
+                      <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400">
+                        Activo
+                      </Badge>
                     ) : (
-                      <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
-                        inactivo
-                      </span>
+                      <Badge variant="secondary">Inactivo</Badge>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/app/clientes/${c.id}`}
+                      className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-muted hover:text-foreground"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

@@ -1,15 +1,27 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { ArrowLeft, Calendar, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { actualizarPedido, cambiarEstadoPedido } from "../actions";
 import { ToastFromSearchParams } from "../../catalogo/shared";
 import { ESTADOS_PEDIDO, type Pedido } from "@/lib/tipos/pedidos";
 import { formatEur } from "@/lib/tipos/presupuestos";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
 const EST = Object.fromEntries(ESTADOS_PEDIDO.map((e) => [e.value, e]));
+
+const ESTADO_VARIANT: Record<string, string> = {
+  pendiente: "bg-muted text-muted-foreground",
+  en_fabricacion: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  fabricado: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  entregado: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  cancelado: "bg-red-500/10 text-red-700 dark:text-red-400",
+};
 
 export default async function DetallePedidoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -30,75 +42,124 @@ export default async function DetallePedidoPage({ params }: { params: Promise<{ 
   const upd = async (fd: FormData) => { "use server"; await actualizarPedido(id, fd); };
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      <Suspense><ToastFromSearchParams /></Suspense>
-      <nav className="text-sm"><Link href="/app/pedidos" className="text-zinc-500 hover:underline dark:text-zinc-400">← Pedidos</Link></nav>
+    <div className="mx-auto max-w-5xl px-6 py-8">
+      <Suspense>
+        <ToastFromSearchParams />
+      </Suspense>
 
-      <div className="mt-2 flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-baseline gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-              {ped.numero ?? "Pedido"}
-            </h1>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${EST[ped.estado]?.color ?? ""}`}>
-              {EST[ped.estado]?.label}
-            </span>
+      <Link
+        href="/app/pedidos"
+        className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Volver a pedidos
+      </Link>
+
+      <PageHeader
+        eyebrow="Pedido"
+        title={ped.numero ?? "Pedido"}
+        description={
+          ped.proyectos?.clientes?.nombre
+            ? `${ped.proyectos.clientes.nombre} · ${ped.proyectos.nombre}${ped.presupuestos?.numero ? ` · Presupuesto ${ped.presupuestos.numero}` : ""}`
+            : undefined
+        }
+        actions={
+          <Badge className={`${ESTADO_VARIANT[ped.estado] ?? ""} border-0`}>
+            {EST[ped.estado]?.label}
+          </Badge>
+        }
+      />
+
+      {/* Métricas clave */}
+      <section className="mt-8 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="grid divide-y divide-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="p-5">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Fecha pedido
+              </p>
+            </div>
+            <p className="mt-2 font-mono text-xl font-bold tracking-tight">
+              {new Date(ped.fecha_pedido).toLocaleDateString("es-ES")}
+            </p>
           </div>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            {ped.proyectos?.clientes?.nombre} · {ped.proyectos?.nombre}
-            {ped.presupuestos?.numero ? ` · Presupuesto ${ped.presupuestos.numero}` : ""}
-          </p>
-        </div>
-      </div>
-
-      <section className="mt-6 grid gap-4 sm:grid-cols-3 rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Fecha pedido</p>
-          <p className="mt-0.5 font-mono text-base font-medium">{new Date(ped.fecha_pedido).toLocaleDateString("es-ES")}</p>
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Entrega prevista</p>
-          <p className="mt-0.5 font-mono text-base font-medium">
-            {ped.fecha_entrega_prevista ? new Date(ped.fecha_entrega_prevista).toLocaleDateString("es-ES") : "—"}
-          </p>
-        </div>
-        <div className="rounded-lg bg-zinc-900 p-3 text-white dark:bg-zinc-100 dark:text-zinc-900">
-          <p className="text-xs uppercase tracking-wide opacity-75">Importe</p>
-          <p className="mt-0.5 font-mono text-lg font-semibold">{formatEur(Number(ped.importe_eur))}</p>
+          <div className="p-5">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Entrega prevista
+              </p>
+            </div>
+            <p className="mt-2 font-mono text-xl font-bold tracking-tight">
+              {ped.fecha_entrega_prevista
+                ? new Date(ped.fecha_entrega_prevista).toLocaleDateString("es-ES")
+                : "—"}
+            </p>
+          </div>
+          <div className="bg-gradient-to-br from-foreground to-foreground/90 p-5 text-background">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-3.5 w-3.5 opacity-70" />
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] opacity-70">
+                Importe
+              </p>
+            </div>
+            <p className="mt-2 font-mono text-2xl font-bold tracking-tight">
+              {formatEur(Number(ped.importe_eur))}
+            </p>
+          </div>
         </div>
       </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-medium">Datos del pedido</h2>
-        <form action={upd} className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Fecha entrega prevista</label>
-            <input name="fecha_entrega_prevista" type="date" defaultValue={ped.fecha_entrega_prevista ?? ""}
-              className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+      <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="mb-6">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            Gestión
+          </p>
+          <h2 className="mt-0.5 text-lg font-bold tracking-tight">Datos del pedido</h2>
+        </div>
+        <form action={upd} className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-muted-foreground">
+              Fecha entrega prevista
+            </label>
+            <input
+              name="fecha_entrega_prevista"
+              type="date"
+              defaultValue={ped.fecha_entrega_prevista ?? ""}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15"
+            />
           </div>
-          <div className="sm:col-span-2 space-y-1">
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Notas</label>
-            <textarea name="notas" rows={3} defaultValue={ped.notas ?? ""}
-              className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="block text-xs font-semibold text-muted-foreground">Notas</label>
+            <textarea
+              name="notas"
+              rows={3}
+              defaultValue={ped.notas ?? ""}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15"
+            />
           </div>
-          <div className="sm:col-span-2">
-            <button type="submit" className="rounded-md bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
-              Guardar
-            </button>
+          <div className="sm:col-span-2 border-t border-border pt-4">
+            <Button type="submit">Guardar cambios</Button>
           </div>
         </form>
       </section>
 
-      <section className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-medium">Cambiar estado</h2>
+      <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="mb-5">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            Flujo
+          </p>
+          <h2 className="mt-0.5 text-lg font-bold tracking-tight">Cambiar estado</h2>
+        </div>
         <div className="flex flex-wrap gap-2">
           {ESTADOS_PEDIDO.filter((e) => e.value !== ped.estado).map((e) => {
             const setEstado = async () => { "use server"; await cambiarEstadoPedido(id, e.value); };
             return (
               <form key={e.value} action={setEstado}>
-                <button type="submit" className={`rounded-md border px-3 py-1.5 text-xs font-medium transition ${e.color} border-transparent hover:opacity-80`}>
+                <Button type="submit" variant="outline" size="sm">
                   → {e.label}
-                </button>
+                </Button>
               </form>
             );
           })}
