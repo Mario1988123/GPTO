@@ -23,6 +23,7 @@ import { ProyectoForm } from "../proyecto-form";
 import { ToastFromSearchParams } from "../../catalogo/shared";
 import { ESTADOS_PROYECTO, type Armario, type Proyecto } from "@/lib/tipos/proyectos";
 import { PageHeader } from "@/components/page-header";
+import { AsistenteIA } from "./asistente-ia";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
@@ -121,6 +122,18 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
                 Explosionar piezas
               </Button>
             </form>
+            <form action={async () => {
+              "use server";
+              const { regenerarPiezasProyecto } = await import("../piezas-actions");
+              const { ejecutarNesting } = await import("../nesting-actions");
+              try { await regenerarPiezasProyecto(id); } catch {}
+              await ejecutarNesting(id); // redirige a /nesting internamente
+            }}>
+              <Button type="submit" size="sm" className="bg-gradient-to-br from-blue-500 to-cyan-400 text-white hover:shadow-lg hover:shadow-blue-500/30">
+                <Scissors className="h-3.5 w-3.5" />
+                Optimizar tableros
+              </Button>
+            </form>
             <form action={async () => { "use server"; const { crearBorrador } = await import("../presupuestos-actions"); await crearBorrador(id); }}>
               <Button type="submit" variant="outline" size="sm">
                 <Receipt className="h-3.5 w-3.5" />
@@ -138,6 +151,11 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
           </>
         }
       />
+
+      {/* Asistente IA */}
+      <div className="mt-6">
+        <AsistenteIA proyectoId={id} />
+      </div>
 
       {/* Portal cliente */}
       <section className="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-200/60 bg-emerald-50/50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">

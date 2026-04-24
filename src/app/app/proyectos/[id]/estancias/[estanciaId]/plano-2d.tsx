@@ -31,59 +31,105 @@ export function Plano2D({
       </div>
 
       <div className="mx-auto overflow-hidden rounded-lg border border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950" style={{ maxWidth: "800px" }}>
-        <svg viewBox={`-50 -50 ${largoMm + 100} ${anchoMm + 100}`} preserveAspectRatio="xMidYMid meet" className="h-auto w-full" style={{ maxHeight: 480 }}>
-          {/* Suelo estancia */}
-          <rect x={0} y={0} width={largoMm} height={anchoMm} fill="#fafafa" stroke="#71717a" strokeWidth={6} className="dark:fill-zinc-900" />
+        <svg viewBox={`-80 -80 ${largoMm + 160} ${anchoMm + 160}`} preserveAspectRatio="xMidYMid meet" className="h-auto w-full" style={{ maxHeight: 480 }}>
+          <defs>
+            <pattern id="plano-grid" width="100" height="100" patternUnits="userSpaceOnUse">
+              <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#e5e7eb" strokeWidth={1} />
+            </pattern>
+          </defs>
+
+          {/* Grid fondo */}
+          <rect x={-80} y={-80} width={largoMm + 160} height={anchoMm + 160} fill="url(#plano-grid)" />
+
+          {/* Suelo estancia (contorno) */}
+          <rect x={0} y={0} width={largoMm} height={anchoMm} fill="#ffffff" fillOpacity={0.85} stroke="none" />
+
+          {/* Paredes semi-transparentes 100mm de grosor hacia dentro (banda visible) */}
+          <g stroke="#1e293b" strokeWidth={8} strokeOpacity={0.5} fill="#94a3b8" fillOpacity={0.35}>
+            {/* Pared superior */}
+            <rect x={-50} y={-50} width={largoMm + 100} height={50} />
+            {/* Pared inferior */}
+            <rect x={-50} y={anchoMm} width={largoMm + 100} height={50} />
+            {/* Pared izquierda */}
+            <rect x={-50} y={0} width={50} height={anchoMm} />
+            {/* Pared derecha */}
+            <rect x={largoMm} y={0} width={50} height={anchoMm} />
+          </g>
+
+          {/* Contorno interior */}
+          <rect x={0} y={0} width={largoMm} height={anchoMm} fill="none" stroke="#334155" strokeWidth={3} />
+
           {/* Cota largo */}
           <g>
-            <line x1={0} y1={anchoMm + 30} x2={largoMm} y2={anchoMm + 30} stroke="#a1a1aa" strokeWidth={2} />
-            <text x={largoMm / 2} y={anchoMm + 50} textAnchor="middle" fontSize={40} fill="#52525b">{largoMm} mm</text>
+            <line x1={0} y1={anchoMm + 60} x2={largoMm} y2={anchoMm + 60} stroke="#64748b" strokeWidth={2} />
+            <text x={largoMm / 2} y={anchoMm + 80} textAnchor="middle" fontSize={40} fill="#475569" fontWeight="600">{largoMm} mm</text>
           </g>
           {/* Cota ancho */}
           <g>
-            <line x1={-30} y1={0} x2={-30} y2={anchoMm} stroke="#a1a1aa" strokeWidth={2} />
-            <text x={-45} y={anchoMm / 2} textAnchor="middle" fontSize={40} fill="#52525b" transform={`rotate(-90, -45, ${anchoMm / 2})`}>{anchoMm} mm</text>
+            <line x1={-60} y1={0} x2={-60} y2={anchoMm} stroke="#64748b" strokeWidth={2} />
+            <text x={-75} y={anchoMm / 2} textAnchor="middle" fontSize={40} fill="#475569" fontWeight="600" transform={`rotate(-90, -75, ${anchoMm / 2})`}>{anchoMm} mm</text>
           </g>
 
-          {/* Armarios */}
+          {/* Armarios (dentro de las paredes) */}
           {armarios.map((a, i) => {
-            // Huella del armario = ancho × fondo (visto desde arriba, el alto no importa)
             const rot = (a.plano_rotacion as number) % 180;
             const W = rot === 0 ? a.ancho_total_mm : a.fondo_mm;
             const H = rot === 0 ? a.fondo_mm : a.ancho_total_mm;
+
+            // Clamp a interior estancia
+            const xClamped = Math.max(0, Math.min(largoMm - W, a.plano_x_mm));
+            const yClamped = Math.max(0, Math.min(anchoMm - H, a.plano_y_mm));
+            const estaFuera = xClamped !== a.plano_x_mm || yClamped !== a.plano_y_mm;
+
             return (
               <g key={a.id}>
                 <rect
-                  x={a.plano_x_mm}
-                  y={a.plano_y_mm}
+                  x={xClamped}
+                  y={yClamped}
                   width={W}
                   height={H}
                   fill={COLORS[i % COLORS.length]}
-                  stroke="#18181b"
+                  stroke={estaFuera ? "#dc2626" : "#0f172a"}
                   strokeWidth={3}
-                  opacity={0.75}
+                  opacity={0.92}
+                  rx={4}
+                />
+                {/* Indicador frente del armario: línea más gruesa en el lado delantero */}
+                <line
+                  x1={xClamped}
+                  y1={yClamped + H}
+                  x2={xClamped + W}
+                  y2={yClamped + H}
+                  stroke="#0f172a"
+                  strokeWidth={6}
                 />
                 <text
-                  x={a.plano_x_mm + W / 2}
-                  y={a.plano_y_mm + H / 2}
+                  x={xClamped + W / 2}
+                  y={yClamped + H / 2}
                   textAnchor="middle"
                   dominantBaseline="central"
                   fontSize={Math.min(36, W / 8)}
-                  fill="#18181b"
-                  fontWeight="bold"
+                  fill="#0f172a"
+                  fontWeight="700"
                 >
                   {a.nombre}
                 </text>
                 <text
-                  x={a.plano_x_mm + W / 2}
-                  y={a.plano_y_mm + H / 2 + 40}
+                  x={xClamped + W / 2}
+                  y={yClamped + H / 2 + 40}
                   textAnchor="middle"
                   dominantBaseline="central"
-                  fontSize={28}
-                  fill="#27272a"
+                  fontSize={26}
+                  fill="#1e293b"
+                  fontWeight="500"
                 >
                   {W}×{H}
                 </text>
+                {estaFuera ? (
+                  <text x={xClamped + W / 2} y={yClamped - 10} textAnchor="middle" fontSize={28} fill="#dc2626" fontWeight="700">
+                    ⚠ posición corregida
+                  </text>
+                ) : null}
               </g>
             );
           })}

@@ -15,6 +15,7 @@ import { Suspense, useMemo, useState, useTransition, useRef } from "react";
 import { toast } from "sonner";
 import type { Matrix4 } from "three";
 import { SUBELEMENTOS_META, type ModuloSubelemento, type TipoSubelemento } from "@/lib/tipos/proyectos";
+import { getMaterialPropsAcabado, type AcabadoKey } from "@/lib/render/materiales";
 
 export type ModuloPro = {
   id: string;
@@ -29,6 +30,7 @@ export type ModuloPro = {
   tiene_led_rebaje: boolean;
   led_color_hex: string | null;
   led_intensidad_lm_m: number | null;
+  categoria: string | null;
   subelementos: ModuloSubelemento[];
 };
 
@@ -39,6 +41,7 @@ type Props = {
   tipo_instalacion: "empotrado" | "suelto";
   margen_tapeta_mm: number;
   modulos: ModuloPro[];
+  acabado?: AcabadoKey;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onMove: (id: string, x_mm: number, y_mm: number) => Promise<void>;
@@ -53,6 +56,7 @@ export function Armario3DPro({
   tipo_instalacion,
   margen_tapeta_mm,
   modulos,
+  acabado = "roble_claro",
   selectedId,
   onSelect,
   onMove,
@@ -139,6 +143,10 @@ export function Armario3DPro({
               <ModuloMesh
                 key={m.id}
                 modulo={m}
+                otrosModulos={modulos.filter((x) => x.id !== m.id)}
+                armarioAnchoMm={armario_ancho_mm}
+                armarioAltoMm={armario_alto_mm}
+                acabado={acabado}
                 k={k}
                 H={H}
                 D={D}
@@ -177,8 +185,76 @@ export function Armario3DPro({
   );
 }
 
+const SNAP_TOL_MM = 30; // tolerancia de magnetismo al borde / módulo vecino
+
+/**
+ * Genera subelementos visuales automáticos cuando el módulo no tiene definidos.
+ * Por categoría del tipo_modulo. NO persisten: solo para render 3D.
+ */
+function autogenerarSubelementos(modulo: ModuloPro): ModuloSubelemento[] {
+  const empty = {
+    id: "virtual",
+    empresa_id: "",
+    modulo_id: modulo.id,
+    offset_x_mm: 0,
+    offset_y_mm: 0,
+    offset_z_mm: 0,
+    config: {},
+    etiqueta: null,
+    ancho_mm: null,
+    created_at: "",
+    updated_at: "",
+  };
+  const cat = (modulo.categoria ?? "").toLowerCase();
+
+  if (cat.includes("cajonera") || cat.includes("cajon")) {
+    // 4 cajones iguales si no sabemos nada
+    const n = 4;
+    const alto = Math.round(modulo.alto_mm / n);
+    return Array.from({ length: n }).map((_, i) => ({
+      ...empty,
+      id: `virtual-cajon-${i}`,
+      tipo: "cajon" as const,
+      orden: i,
+      alto_mm: alto,
+    }));
+  }
+  if (cat.includes("zapatero")) {
+    const alturas = [180, 180, 180, 180];
+    return alturas.map((a, i) => ({
+      ...empty,
+      id: `virtual-zap-${i}`,
+      tipo: "balda_fija" as const,
+      orden: i,
+      alto_mm: a,
+    }));
+  }
+  if (cat.includes("colgador") || cat.includes("colgar")) {
+    return [
+      { ...empty, id: "virtual-barra", tipo: "barra_colgar", orden: 0, alto_mm: Math.round(modulo.alto_mm * 0.85) },
+      { ...empty, id: "virtual-balda-sup", tipo: "balda_fija", orden: 1, alto_mm: Math.round(modulo.alto_mm * 0.15) },
+    ];
+  }
+  if (cat.includes("estanter") || cat.includes("balda")) {
+    const n = 5;
+    const alto = Math.round(modulo.alto_mm / n);
+    return Array.from({ length: n }).map((_, i) => ({
+      ...empty,
+      id: `virtual-balda-${i}`,
+      tipo: "balda_fija" as const,
+      orden: i,
+      alto_mm: alto,
+    }));
+  }
+  return [];
+}
+
 function ModuloMesh({
   modulo,
+  otrosModulos,
+  armarioAnchoMm,
+  armarioAltoMm,
+  acabado,
   k,
   H,
   D,
@@ -188,6 +264,10 @@ function ModuloMesh({
   onDragStart,
 }: {
   modulo: ModuloPro;
+  otrosModulos: ModuloPro[];
+  armarioAnchoMm: number;
+  armarioAltoMm: number;
+  acabado: AcabadoKey;
   k: number;
   H: number;
   D: number;
@@ -204,13 +284,46 @@ function ModuloMesh({
 
   const finalPos = useRef({ x: modulo.posicion_x_mm, y: modulo.posicion_y_mm });
 
+  // Calcula snap sobre el valor bruto
+  function snapX(xmm: number): number {
+    const anchoMax = Math.max(0, armarioAnchoMm - modulo.ancho_mm);
+    let out = Math.max(0, Math.min(anchoMax, xmm));
+    // Snap al borde izquierdo
+    if (out < SNAP_TOL_MM) out = 0;
+    // Snap al borde derecho
+    if (anchoMax - out < SNAP_TOL_MM) out = anchoMax;
+    // Snap a módulos vecinos: borde derecho del vecino = inicio del actual
+    for (const o of otrosModulos) {
+      const oDerecha = o.posicion_x_mm + o.ancho_mm;
+      const oIzquierda = o.posicion_x_mm;
+      if (Math.abs(out - oDerecha) < SNAP_TOL_MM) out = oDerecha;
+      if (Math.abs(out + modulo.ancho_mm - oIzquierda) < SNAP_TOL_MM)
+        out = oIzquierda - modulo.ancho_mm;
+    }
+    return Math.max(0, Math.min(anchoMax, Math.round(out)));
+  }
+
+  function snapY(ymm: number): number {
+    const altoMax = Math.max(0, armarioAltoMm - modulo.alto_mm);
+    let out = Math.max(0, Math.min(altoMax, ymm));
+    if (out < SNAP_TOL_MM) out = 0;
+    if (altoMax - out < SNAP_TOL_MM) out = altoMax;
+    for (const o of otrosModulos) {
+      const oSuperior = o.posicion_y_mm + o.alto_mm;
+      const oInferior = o.posicion_y_mm;
+      if (Math.abs(out - oSuperior) < SNAP_TOL_MM) out = oSuperior;
+      if (Math.abs(out + modulo.alto_mm - oInferior) < SNAP_TOL_MM)
+        out = oInferior - modulo.alto_mm;
+    }
+    return Math.max(0, Math.min(altoMax, Math.round(out)));
+  }
+
   const onDrag = (_l: Matrix4, _dl: Matrix4, w: Matrix4) => {
-    // Extrae traslación del worldMatrix
     const elements = w.elements;
     const tx = elements[12];
     const ty = elements[13];
-    finalPos.current.x = Math.max(0, Math.round(tx * 1000));
-    finalPos.current.y = Math.max(0, Math.round(ty * 1000));
+    finalPos.current.x = snapX(Math.round(tx * 1000));
+    finalPos.current.y = snapY(Math.round(ty * 1000));
   };
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
@@ -225,6 +338,7 @@ function ModuloMesh({
         mw={mw}
         mh={mh}
         md={md}
+        acabado={acabado}
         isSelected={isSelected}
         onClick={handleClick}
       />
@@ -258,6 +372,7 @@ function ModuloBody({
   mw,
   mh,
   md,
+  acabado,
   isSelected,
   onClick,
 }: {
@@ -265,25 +380,30 @@ function ModuloBody({
   mw: number;
   mh: number;
   md: number;
+  acabado: AcabadoKey;
   isSelected: boolean;
   onClick: (e: ThreeEvent<MouseEvent>) => void;
 }) {
-  const color = isSelected ? COLOR_SEL : modulo.color;
+  const areaM2 = (modulo.ancho_mm * modulo.alto_mm) / 1_000_000;
+  const matProps = getMaterialPropsAcabado(acabado, { respetaVeta: true, area_m2: areaM2 });
 
   return (
     <group onClick={onClick}>
-      {/* Caja del módulo */}
+      {/* Caja del módulo con textura y clearcoat */}
       <mesh castShadow receiveShadow>
         <boxGeometry args={[mw, mh, md]} />
-        <meshStandardMaterial
-          color={color}
-          roughness={0.45}
-          metalness={0.05}
+        <meshPhysicalMaterial
+          map={matProps.map ?? null}
+          color={matProps.color}
+          roughness={matProps.roughness}
+          metalness={matProps.metalness}
+          clearcoat={matProps.clearcoat}
+          clearcoatRoughness={matProps.clearcoatRoughness}
           emissive={isSelected ? COLOR_SEL : "#000000"}
           emissiveIntensity={isSelected ? 0.15 : 0}
         />
       </mesh>
-      <Edges color={isSelected ? "#c2410c" : "#1e1e22"} lineWidth={isSelected ? 2.5 : 0.8} />
+      <Edges color={isSelected ? "#c2410c" : "#1e1e22"} lineWidth={isSelected ? 2.5 : 0.5} />
 
       {/* Particiones verticales (horizontales visuales) */}
       {modulo.particiones > 1
@@ -365,13 +485,21 @@ function SubelementosLayer({
 }) {
   // Agrupar por tipo
   const k = 0.001;
-  const interior = modulo.subelementos.filter((s) =>
+
+  // Si es un tipo cajonera/zapatero/estanteria y NO tiene subelementos definidos,
+  // generamos virtuales para que el 3D muestre algo útil en vez de un cubo.
+  let sub = modulo.subelementos;
+  if (sub.length === 0 && modulo.categoria) {
+    sub = autogenerarSubelementos(modulo);
+  }
+
+  const interior = sub.filter((s) =>
     ["cajon", "balda_fija", "balda_regulable", "barra_colgar", "hueco_abierto"].includes(s.tipo),
   );
-  const frentes = modulo.subelementos.filter((s) =>
+  const frentes = sub.filter((s) =>
     ["puerta_abatible", "puerta_corredera", "puerta_plegable", "tapeta_ciega", "espejo"].includes(s.tipo),
   );
-  const complementos = modulo.subelementos.filter((s) =>
+  const complementos = sub.filter((s) =>
     ["zapatero", "cesto_extraible", "corbatero", "joyero", "portapantalones", "canaleta_tirador"].includes(s.tipo),
   );
 

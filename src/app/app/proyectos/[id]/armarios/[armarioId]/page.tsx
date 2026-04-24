@@ -20,6 +20,7 @@ import {
   eliminarSubelemento,
   moverPosicionModulo,
   actualizarLedModulo,
+  generarCajones,
 } from "../../../subelementos-actions";
 import { cambiarEstadoPieza, regenerarPiezasArmario } from "../../../piezas-actions";
 import { actualizarDatosInstalacion } from "../../../estancias-actions";
@@ -35,7 +36,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 export const dynamic = "force-dynamic";
 
 type ModuloVista = ModuloArmario & {
-  tipos_modulo: { nombre: string } | null;
+  tipos_modulo: { nombre: string; categoria: string | null } | null;
   modulo_subelementos: ModuloSubelemento[] | null;
 };
 
@@ -64,7 +65,7 @@ export default async function ConfiguradorArmarioPage({
   const [{ data: proyecto }, { data: modulos }, { data: tipos }, { data: refs }, { data: piezasRaw }] = await Promise.all([
     s.from("proyectos").select("*").eq("id", proyectoId).maybeSingle<Proyecto>(),
     s.from("modulos_armario")
-      .select("*, tipos_modulo(nombre), modulo_subelementos(*)")
+      .select("*, tipos_modulo(nombre, categoria), modulo_subelementos(*)")
       .eq("armario_id", armarioId)
       .order("orden")
       .returns<ModuloVista[]>(),
@@ -225,6 +226,7 @@ export default async function ConfiguradorArmarioPage({
               tiene_led_rebaje: m.tiene_led_rebaje ?? false,
               led_color_hex: m.led_color_hex ?? null,
               led_intensidad_lm_m: m.led_intensidad_lm_m ?? null,
+              categoria: m.tipos_modulo?.categoria ?? null,
               subelementos: m.modulo_subelementos ?? [],
             }))}
             onMoverModulo={async (moduloId, x, y) => {
@@ -246,6 +248,10 @@ export default async function ConfiguradorArmarioPage({
             onEliminarSubelemento={async (subId) => {
               "use server";
               await eliminarSubelemento(proyectoId, armarioId, subId);
+            }}
+            onGenerarCajones={async (moduloId, dist, n, alturas) => {
+              "use server";
+              await generarCajones(proyectoId, armarioId, moduloId, dist, n, alturas);
             }}
           />
         )}

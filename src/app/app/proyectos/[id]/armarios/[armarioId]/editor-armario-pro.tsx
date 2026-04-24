@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Lightbulb, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Lightbulb, ChevronUp, ChevronDown, Sparkles } from "lucide-react";
 import { Armario3DPro, type ModuloPro } from "./armario-3d-pro";
 import {
   SUBELEMENTOS_META,
@@ -26,6 +26,12 @@ type Props = {
   onCrearSubelemento: (moduloId: string, fd: FormData) => Promise<void>;
   onActualizarSubelemento: (subelementoId: string, fd: FormData) => Promise<void>;
   onEliminarSubelemento: (subelementoId: string) => Promise<void>;
+  onGenerarCajones: (
+    moduloId: string,
+    distribucion: "iguales" | "progresiva" | "personalizada",
+    n: number,
+    alturasMm: number[] | null,
+  ) => Promise<void>;
 };
 
 const TIPOS_POR_GRUPO: Record<string, TipoSubelemento[]> = {
@@ -60,6 +66,7 @@ export function EditorArmarioPro(props: Props) {
     onCrearSubelemento,
     onActualizarSubelemento,
     onEliminarSubelemento,
+    onGenerarCajones,
   } = props;
 
   const [selectedId, setSelectedId] = useState<string | null>(
@@ -121,6 +128,17 @@ export function EditorArmarioPro(props: Props) {
               pending={pending}
               onSubmit={(fd) =>
                 runServer(() => onActualizarLed(selected.id, fd), "LED actualizado")
+              }
+            />
+
+            <GeneradorCajones
+              modulo={selected}
+              pending={pending}
+              onGenerar={(dist, n, alturas) =>
+                runServer(
+                  () => onGenerarCajones(selected.id, dist, n, alturas),
+                  `${n} cajones ${dist} generados`,
+                )
               }
             />
 
@@ -241,6 +259,157 @@ function ModuloPosicionInputs({
       >
         Aplicar posición
       </Button>
+    </div>
+  );
+}
+
+function GeneradorCajones({
+  modulo,
+  pending,
+  onGenerar,
+}: {
+  modulo: ModuloPro;
+  pending: boolean;
+  onGenerar: (
+    distribucion: "iguales" | "progresiva" | "personalizada",
+    n: number,
+    alturasMm: number[] | null,
+  ) => void;
+}) {
+  const [modo, setModo] = useState<"iguales" | "progresiva" | "personalizada">("iguales");
+  const [n, setN] = useState(4);
+  const [alturas, setAlturas] = useState<number[]>(() =>
+    Array.from({ length: 4 }, () => Math.round(modulo.alto_mm / 4)),
+  );
+
+  const sumAlturas = alturas.reduce((a, b) => a + b, 0);
+  const altoModulo = modulo.alto_mm;
+  const desbordaPersonalizada = modo === "personalizada" && sumAlturas > altoModulo;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-blue-500" />
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          Asistente cajones
+        </p>
+      </div>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Genera cajones automáticamente respetando el alto del módulo ({altoModulo} mm).
+      </p>
+
+      <div className="mb-3 flex rounded-lg border border-border bg-muted/40 p-1 text-xs">
+        {(["iguales", "progresiva", "personalizada"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setModo(m)}
+            className={`flex-1 rounded-md px-2 py-1 font-semibold capitalize transition ${
+              modo === m ? "bg-background shadow-sm" : "text-muted-foreground"
+            }`}
+          >
+            {m}
+          </button>
+        ))}
+      </div>
+
+      {(modo === "iguales" || modo === "progresiva") ? (
+        <label className="space-y-1 block">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Número de cajones
+          </span>
+          <input
+            type="number"
+            min={1}
+            max={8}
+            value={n}
+            onChange={(e) => {
+              const v = Math.max(1, Math.min(8, Number.parseInt(e.target.value, 10) || 1));
+              setN(v);
+            }}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 font-mono text-sm shadow-xs"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            {modo === "iguales"
+              ? `≈ ${Math.floor(altoModulo / n)} mm cada uno`
+              : `Cajones decrecientes (el primero más grande)`}
+          </p>
+        </label>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="flex-1 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Nº de cajones
+              </span>
+              <input
+                type="number"
+                min={1}
+                max={8}
+                value={alturas.length}
+                onChange={(e) => {
+                  const v = Math.max(1, Math.min(8, Number.parseInt(e.target.value, 10) || 1));
+                  const cur = [...alturas];
+                  while (cur.length < v) cur.push(150);
+                  cur.length = v;
+                  setAlturas(cur);
+                }}
+                className="flex h-8 w-full rounded-md border border-input bg-background px-2 font-mono text-xs"
+              />
+            </label>
+            <div className="flex-1 rounded-md bg-muted/40 p-2 text-center">
+              <p className="text-[9px] font-bold uppercase text-muted-foreground">Suma</p>
+              <p className={`font-mono text-sm font-bold ${desbordaPersonalizada ? "text-red-600" : sumAlturas === altoModulo ? "text-emerald-600" : "text-foreground"}`}>
+                {sumAlturas} / {altoModulo}
+              </p>
+            </div>
+          </div>
+          <ul className="space-y-1">
+            {alturas.map((a, i) => (
+              <li key={i} className="flex items-center gap-2">
+                <span className="w-12 text-xs font-bold text-muted-foreground">#{i + 1}</span>
+                <input
+                  type="number"
+                  min={50}
+                  value={a}
+                  onChange={(e) => {
+                    const next = [...alturas];
+                    next[i] = Math.max(50, Number.parseInt(e.target.value, 10) || 0);
+                    setAlturas(next);
+                  }}
+                  className="flex h-8 flex-1 rounded-md border border-input bg-background px-2 font-mono text-xs"
+                />
+                <span className="text-[10px] text-muted-foreground">mm</span>
+              </li>
+            ))}
+          </ul>
+          {desbordaPersonalizada ? (
+            <p className="text-[11px] font-semibold text-red-600">
+              Las alturas suman más que el alto del módulo. Reduce alguna.
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      <Button
+        type="button"
+        size="sm"
+        disabled={pending || desbordaPersonalizada}
+        className="mt-3 w-full"
+        onClick={() =>
+          onGenerar(
+            modo,
+            modo === "personalizada" ? alturas.length : n,
+            modo === "personalizada" ? alturas : null,
+          )
+        }
+      >
+        <Sparkles className="h-3.5 w-3.5" />
+        Generar cajones
+      </Button>
+      <p className="mt-2 text-[10px] text-muted-foreground">
+        Sustituye los cajones existentes del módulo.
+      </p>
     </div>
   );
 }

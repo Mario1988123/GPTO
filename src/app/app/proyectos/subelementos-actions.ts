@@ -135,6 +135,67 @@ export async function moverPosicionModulo(
   revalidatePath(`/app/proyectos/${proyectoId}/armarios/${armarioId}`);
 }
 
+/**
+ * Genera N cajones para un módulo, con distribución:
+ * - "iguales": N cajones del mismo alto.
+ * - "progresiva": primero grandes, luego pequeños (45/30/15/10%).
+ * - "personalizada": alturas custom pasadas en el array alturasMm.
+ */
+export async function generarCajones(
+  proyectoId: string,
+  armarioId: string,
+  moduloId: string,
+  distribucion: "iguales" | "progresiva" | "personalizada",
+  n: number,
+  alturasMm: number[] | null,
+) {
+  const s = await createClient();
+  const { data: mod } = await s
+    .from("modulos_armario")
+    .select("alto_mm")
+    .eq("id", moduloId)
+    .maybeSingle<{ alto_mm: number }>();
+  if (!mod) throw new Error("Módulo no encontrado");
+
+  // Borrar cajones previos (solo los de tipo cajón)
+  await s.from("modulo_subelementos").delete().eq("modulo_id", moduloId).eq("tipo", "cajon");
+
+  let alturas: number[] = [];
+  if (distribucion === "iguales") {
+    const alto = Math.floor(mod.alto_mm / Math.max(1, n));
+    alturas = Array.from({ length: n }, () => alto);
+  } else if (distribucion === "progresiva") {
+    // Pesos decrecientes para hasta 6 cajones
+    const pesos = [0.30, 0.22, 0.18, 0.13, 0.10, 0.07].slice(0, n);
+    const sum = pesos.reduce((a, b) => a + b, 0);
+    alturas = pesos.map((w) => Math.round((w / sum) * mod.alto_mm));
+  } else if (distribucion === "personalizada") {
+    if (!alturasMm || alturasMm.length === 0) throw new Error("Alturas personalizadas vacías");
+    alturas = alturasMm.map((a) => Math.max(50, Math.round(a)));
+  }
+
+  // Insertar en orden de abajo a arriba
+  const rows = alturas.map((alto, i) => ({
+    modulo_id: moduloId,
+    tipo: "cajon" as const,
+    orden: i,
+    alto_mm: alto,
+    offset_x_mm: 0,
+    offset_y_mm: 0,
+    offset_z_mm: 0,
+    config: { distribucion },
+    etiqueta: `Cajón ${i + 1}`,
+  }));
+
+  const { error } = await s.from("modulo_subelementos").insert(rows);
+  if (error) {
+    redirect(`/app/proyectos/${proyectoId}/armarios/${armarioId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath(`/app/proyectos/${proyectoId}/armarios/${armarioId}`);
+  redirect(`/app/proyectos/${proyectoId}/armarios/${armarioId}?ok=creado`);
+}
+
 export async function actualizarLedModulo(
   proyectoId: string,
   armarioId: string,
