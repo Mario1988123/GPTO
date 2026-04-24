@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Sparkles, Check, Phone, Mail, MapPin, Clock } from "lucide-react";
 import { createPublicClient } from "@/lib/supabase/public";
 import { ESTADOS_PIEZA, type EstadoPieza, type PiezaModulo } from "@/lib/tipos/piezas";
 
@@ -6,6 +7,13 @@ export const dynamic = "force-dynamic";
 
 const EST = Object.fromEntries(ESTADOS_PIEZA.map((e) => [e.value, e]));
 const ORDEN: EstadoPieza[] = ["pendiente", "cortada", "producida", "entregada"];
+
+const ESTADO_VARIANT: Record<string, string> = {
+  pendiente: "bg-muted text-muted-foreground",
+  cortada: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  producida: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  entregada: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+};
 
 type Trace = PiezaModulo & {
   modulos_armario: {
@@ -60,38 +68,44 @@ export default async function TracePage({ params }: { params: Promise<{ qr: stri
     : null;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-zinc-50 to-zinc-100 py-8 dark:from-zinc-950 dark:to-black">
+    <main className="min-h-screen bg-gradient-to-b from-muted/30 via-background to-background py-10">
       <div className="mx-auto max-w-md px-4">
-        {/* Cabecera empresa */}
-        <div className="mb-4 text-center">
+        {/* Cabecera */}
+        <div className="mb-6 flex flex-col items-center text-center">
           {cfg.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={cfg.logo_url} alt={empresa?.nombre ?? "Empresa"} className="mx-auto h-14 object-contain" />
-          ) : null}
-          <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-zinc-500 dark:text-zinc-400">
-            Trazabilidad GPTO
+            <img src={cfg.logo_url} alt={empresa?.nombre ?? "Empresa"} className="h-14 object-contain" />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-foreground text-background shadow-lg">
+              <Sparkles className="h-5 w-5" />
+            </div>
+          )}
+          <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+            Trazabilidad
           </p>
-          <p className="text-xs text-zinc-600 dark:text-zinc-400">{empresa?.nombre ?? ""}</p>
+          <p className="mt-0.5 text-sm font-semibold">{empresa?.nombre ?? ""}</p>
         </div>
 
-        {/* Tarjeta principal */}
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-widest text-zinc-400 dark:text-zinc-600">
-              {data.modulos_armario?.nombre_override ?? data.modulos_armario?.tipos_modulo?.nombre ?? "—"}
-            </p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-              {data.nombre}
-            </h1>
-            <div className="mt-3 flex items-center justify-center">
-              <span className={`rounded-full px-3 py-1 text-xs font-medium ${est?.color ?? ""}`}>
-                ● {est?.label ?? data.estado}
-              </span>
+        {/* Tarjeta pieza */}
+        <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+          <div className="bg-gradient-to-br from-foreground via-foreground to-sidebar-primary p-6 text-background">
+            <div className="text-center">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-70">
+                {data.modulos_armario?.nombre_override ?? data.modulos_armario?.tipos_modulo?.nombre ?? "—"}
+              </p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight">{data.nombre}</h1>
+              <div className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-background/20 px-3 py-1.5 text-xs font-bold backdrop-blur-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-background/60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-background" />
+                </span>
+                {est?.label ?? data.estado}
+              </div>
             </div>
           </div>
 
-          {/* Timeline visual */}
-          <div className="mt-6">
+          {/* Timeline */}
+          <div className="p-6">
             <div className="relative flex items-start justify-between">
               {ORDEN.map((e, i) => {
                 const hecho = i <= currentIdx;
@@ -100,69 +114,72 @@ export default async function TracePage({ params }: { params: Promise<{ qr: stri
                 return (
                   <div key={e} className="relative z-10 flex flex-1 flex-col items-center">
                     <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-semibold transition ${
+                      className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold transition ${
                         actual
-                          ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900"
+                          ? `${ESTADO_VARIANT[e] ?? ""} ring-2 ring-foreground`
                           : hecho
-                            ? "border-emerald-500 bg-emerald-500 text-white"
-                            : "border-zinc-200 bg-white text-zinc-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-600"
+                            ? "bg-emerald-500 text-white"
+                            : "bg-muted text-muted-foreground"
                       }`}
                     >
-                      {hecho && !actual ? "✓" : i + 1}
+                      {hecho && !actual ? <Check className="h-4 w-4" /> : i + 1}
                     </div>
-                    <span className={`mt-2 text-[10px] ${hecho ? "font-semibold text-zinc-900 dark:text-zinc-50" : "text-zinc-400 dark:text-zinc-600"}`}>
+                    <span className={`mt-2 text-center text-[10px] ${hecho ? "font-semibold" : "text-muted-foreground"}`}>
                       {label}
                     </span>
                   </div>
                 );
               })}
-              <div className="absolute top-4 left-[12%] right-[12%] h-0.5 -translate-y-1/2 bg-zinc-200 dark:bg-zinc-800">
+              <div className="absolute top-[18px] left-[12%] right-[12%] h-0.5 -translate-y-1/2 bg-muted">
                 <div
-                  className="h-full bg-emerald-500 transition-all"
+                  className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-700"
                   style={{ width: `${(currentIdx / (ORDEN.length - 1)) * 100}%` }}
                 />
               </div>
             </div>
             {entregaPrevista ? (
-              <p className="mt-5 text-center text-xs text-zinc-600 dark:text-zinc-400">
-                Entrega prevista: <strong>{entregaPrevista}</strong>
-              </p>
+              <div className="mt-6 flex items-center justify-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-sm">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                Entrega prevista: <strong className="font-mono">{entregaPrevista}</strong>
+              </div>
             ) : null}
           </div>
         </div>
 
         {/* Detalles */}
-        <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Detalles</h2>
-          <dl className="divide-y divide-zinc-100 text-sm dark:divide-zinc-800">
-            <Row k="Dimensiones" v={`${data.largo_mm} × ${data.ancho_mm} × ${data.grosor_mm} mm`} />
-            <Row k="Unidades" v={String(data.cantidad)} />
+        <div className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Detalles</h2>
+          <dl className="divide-y divide-border text-sm">
+            <Row k="Dimensiones" v={`${data.largo_mm} × ${data.ancho_mm} × ${data.grosor_mm} mm`} mono />
+            <Row k="Unidades" v={String(data.cantidad)} mono />
             <Row k="Canto" v={data.lados_con_canto === "ninguno" ? "Sin canto" : data.lados_con_canto.replace(/_/g, " ")} />
             <Row k="Veta" v={data.respeta_veta ? "Respeta veta" : "Libre"} />
             <Row k="Armario" v={data.modulos_armario?.armarios?.nombre ?? "—"} />
             <Row k="Proyecto" v={data.modulos_armario?.armarios?.proyectos?.nombre ?? "—"} />
             <Row k="Cliente" v={data.modulos_armario?.armarios?.proyectos?.clientes?.nombre ?? "—"} />
-            {pedido?.numero ? <Row k="Pedido" v={pedido.numero} /> : null}
+            {pedido?.numero ? <Row k="Pedido" v={pedido.numero} mono /> : null}
           </dl>
         </div>
 
         {/* Historial */}
         {(eventos ?? []).length > 0 ? (
-          <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Historial</h2>
-            <ol className="relative space-y-3 border-l border-zinc-200 pl-4 dark:border-zinc-800">
+          <div className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h2 className="mb-4 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Historial</h2>
+            <ol className="relative space-y-4 border-l-2 border-border pl-4">
               {((eventos ?? []) as Evento[]).slice().reverse().map((ev) => {
                 const estEv = EST[ev.estado_nuevo as EstadoPieza];
                 return (
                   <li key={ev.id} className="relative">
-                    <span className="absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 border-white bg-zinc-400 dark:border-zinc-900" />
-                    <p className="text-xs">
-                      <span className="font-semibold">{estEv?.label ?? ev.estado_nuevo}</span>
-                      {ev.estado_anterior
-                        ? <span className="text-zinc-400"> · desde {EST[ev.estado_anterior as EstadoPieza]?.label ?? ev.estado_anterior}</span>
-                        : <span className="text-zinc-400"> · creada</span>}
+                    <span className="absolute -left-[22px] top-1 h-3 w-3 rounded-full border-2 border-card bg-foreground" />
+                    <p className="text-sm">
+                      <span className="font-bold">{estEv?.label ?? ev.estado_nuevo}</span>
+                      {ev.estado_anterior ? (
+                        <span className="text-muted-foreground"> · desde {EST[ev.estado_anterior as EstadoPieza]?.label ?? ev.estado_anterior}</span>
+                      ) : (
+                        <span className="text-muted-foreground"> · creada</span>
+                      )}
                     </p>
-                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {new Date(ev.created_at).toLocaleString("es-ES")}
                     </p>
                   </li>
@@ -173,36 +190,45 @@ export default async function TracePage({ params }: { params: Promise<{ qr: stri
         ) : null}
 
         {/* Contacto */}
-        {(cfg.empresa_telefono || cfg.empresa_email) ? (
-          <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Contacto</h2>
-            <div className="space-y-1 text-sm">
+        {cfg.empresa_telefono || cfg.empresa_email ? (
+          <div className="mt-4 rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <h2 className="mb-3 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Contacto</h2>
+            <div className="space-y-2 text-sm">
               {cfg.empresa_telefono ? (
-                <p><a href={`tel:${cfg.empresa_telefono}`} className="font-medium text-zinc-900 hover:underline dark:text-zinc-100">{cfg.empresa_telefono}</a></p>
+                <a href={`tel:${cfg.empresa_telefono}`} className="flex items-center gap-2 rounded-lg border border-border p-3 font-semibold transition hover:bg-muted/50">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  {cfg.empresa_telefono}
+                </a>
               ) : null}
               {cfg.empresa_email ? (
-                <p><a href={`mailto:${cfg.empresa_email}`} className="font-medium text-zinc-900 hover:underline dark:text-zinc-100">{cfg.empresa_email}</a></p>
+                <a href={`mailto:${cfg.empresa_email}`} className="flex items-center gap-2 rounded-lg border border-border p-3 font-semibold transition hover:bg-muted/50">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  {cfg.empresa_email}
+                </a>
               ) : null}
               {cfg.empresa_direccion ? (
-                <p className="text-xs text-zinc-600 dark:text-zinc-400">{cfg.empresa_direccion}</p>
+                <div className="flex items-start gap-2 rounded-lg border border-border p-3 text-xs text-muted-foreground">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  {cfg.empresa_direccion}
+                </div>
               ) : null}
             </div>
           </div>
         ) : null}
 
-        <p className="mt-6 text-center text-[10px] font-mono text-zinc-400 dark:text-zinc-600">
-          QR: {data.qr_code}
+        <p className="mt-8 text-center font-mono text-[10px] text-muted-foreground/70">
+          QR · {data.qr_code}
         </p>
       </div>
     </main>
   );
 }
 
-function Row({ k, v }: { k: string; v: string }) {
+function Row({ k, v, mono = false }: { k: string; v: string; mono?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2.5">
-      <dt className="text-xs uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{k}</dt>
-      <dd className="text-right font-medium text-zinc-900 dark:text-zinc-100">{v}</dd>
+      <dt className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{k}</dt>
+      <dd className={`text-right font-semibold ${mono ? "font-mono" : ""}`}>{v}</dd>
     </div>
   );
 }

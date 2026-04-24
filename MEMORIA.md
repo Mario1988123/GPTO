@@ -6,6 +6,52 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 13 — Rediseño UI v2 completo · ✅ Cerrada
+**Fecha**: 2026-04-24
+
+**Resultado**
+Rediseño integral de toda la aplicación con un sistema de diseño premium basado en tokens oklch, shadcn/ui y componentes compartidos. Sin cambios funcionales: solo estética, consistencia y jerarquía visual.
+
+**Sistema de diseño**
+- `src/app/globals.css` — tokens oklch cálidos (blue-purple accent), scrollbar sutil, selección con color de marca, `tabular-nums` para fuentes mono, utilities `.glass` y `.noise`.
+- shadcn/ui v4 añadido: Button, Card, Badge, Input, Label, Textarea, Select, Separator, Avatar, Table, Tabs, Dialog, DropdownMenu, Tooltip, Alert, Skeleton.
+- Componentes compartidos nuevos:
+  - `src/components/page-header.tsx` — PageHeader con eyebrow + title + description + actions.
+  - `src/components/stat-card.tsx` — StatCard con variantes default/accent/ghost + trends.
+  - `src/components/empty-state.tsx` — EmptyState con icono circular + descripción + acción.
+- Helpers reutilizables en `catalogo/shared.tsx`:
+  - `CatalogoFormCard`, `CatalogoDetalleActions`, `VerSelect` para DRY del CRUD de catálogo.
+
+**Layout + páginas principales**
+- Landing `/` — hero con gradiente, features grid 6 cards, footer.
+- Login `/login` — split-screen, panel derecho con gradiente + módulos SVG apilados + copy "Desde el boceto. Hasta el taller".
+- `/app` layout — sidebar agrupado (Negocio, Producción, Configuración, Análisis, Sistema) con Avatar + Badge de rol + logo Sparkles.
+- `/app` dashboard — PageHeader saludo, 4 StatCards, banner facturación con gradient blue-purple, 9 NavCards con variant accent para Producción, ActivityCards para últimos proyectos/presupuestos, tarjeta discreta de Ajustes.
+
+**Rediseño exhaustivo por secciones**
+- **Clientes** listado (Table + Badge activo), nuevo + detalle (PageHeader + CatalogoFormCard + CatalogoDetalleActions).
+- **Proyectos** listado con Estado Badge coloreado, detalle con Portal cliente card verde + Estancias+armarios en cards apiladas con Home icon + forms en muted/20.
+- **Presupuestos** listado y detalle con totales en grid 5 cols (Total con gradient foreground→sidebar-primary), líneas en Table shadcn, formularios de edición compactos.
+- **Pedidos** listado y detalle con 3 métricas clave (fecha pedido, entrega prevista, importe highlight).
+- **Catálogo** página principal con 6 Link cards + LucideIcon por cada subcategoría con contador en pill.
+- **Catálogo subpáginas** (materiales/proveedores/acabados/cantos/herrajes/referencias-tablero × listado + nuevo + detalle = 18 archivos) con VerSelect compartido y Table shadcn.
+- **Tipos de módulo** listado (Table) y detalle con 3 secciones en cards (datos generales, piezas con calculo en vivo, herrajes asociados).
+- **Producción** kanban con columnas en card, cada tarjeta pieza en bg-background hover-shadow.
+- **Recortes** Table con Badge de estado + acciones contextuales por estado.
+- **Informes** con 4 StatCards, gráfico barras ventas 12 meses con gradient + tooltip hover, Top5 clientes con barras proporcionales, Estado proyectos con barra horizontal dividida, merma en 3 cajas emerald/red/neutral, stock bajo con alerta.
+- **Ajustes** con 4 secciones card (Identidad, Facturación, Tablero, Módulos apilados), icono por sección, Button de guardar destacado.
+- **Portal cliente `/c/[token]`** con tarjeta hero gradient blue-purple, progreso de fabricación con 4 boxes coloreados, cards de pedido + presupuesto + armarios + contacto en hover-bg.
+- **Trazabilidad `/t/[qr]`** con tarjeta hero gradient, timeline horizontal con círculos numerados y Check verde en pasos completados, detalles en dl, historial cronológico vertical con bullets border, contacto en cards clicables.
+
+**Decisiones**
+- `Link` con `buttonVariants()` directo en vez de `asChild` (Base UI Button de shadcn v4 no soporta asChild, usa `render`).
+- `<select>` nativo en filtros (shadcn Select no acepta `value=""` en SelectItem).
+- Mantener toasts sonner verde/rojo 3s existentes.
+
+**Sin migraciones BD**. Solo UI.
+
+---
+
 ### Sesión maratón de capas opcionales · ✅ Todas cerradas
 **Fecha**: 2026-04-23
 
@@ -486,8 +532,8 @@ Next.js 16.2.4 + React 19.2.4 + TS + Tailwind 4 + shadcn/ui v4. Repo `C:\GPTO`. 
 - **Capa 7.3** (2026-04-23): herraje unión módulos apilados en presupuestos. ✅
 - **Mini 5.1** (2026-04-23): PDF etiquetas QR A4 por armario. ✅
 - **/app/ajustes** (2026-04-23): editor UI de config_empresa completo. ✅
+- **Capa 13** (2026-04-24): rediseño UI v2 completo — tokens oklch, shadcn/ui, PageHeader/StatCard/EmptyState, Tables, Badges, cards gradient. ✅
 - **Pendiente**:
-  - **Capa 13** — rediseño UI v2 (deuda registrada en memoria persistente, requiere sesión dedicada).
   - **Capa 11 extendido** — asistente IA Claude (el determinista está; LLM con explicaciones humanas queda opcional).
 - **Iteraciones opcionales pendientes**:
   - **Capa 6.2** — drag&drop manual sobre plano de corte nesting.

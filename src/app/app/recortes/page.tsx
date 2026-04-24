@@ -1,13 +1,32 @@
-import Link from "next/link";
 import { Suspense } from "react";
+import { Scissors } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ToastFromSearchParams } from "../catalogo/shared";
 import { cambiarEstadoRecorte } from "../proyectos/nesting-actions";
 import { ESTADOS_RECORTE, type EstadoRecorte } from "@/lib/tipos/nesting";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/empty-state";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
 const EST = Object.fromEntries(ESTADOS_RECORTE.map((e) => [e.value, e]));
+
+const ESTADO_COLOR: Record<string, string> = {
+  pendiente: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  conservado: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  usado: "bg-violet-500/10 text-violet-700 dark:text-violet-400",
+  descartado: "bg-muted text-muted-foreground",
+};
 
 type Fila = {
   id: string;
@@ -31,81 +50,112 @@ export default async function RecortesPage({ searchParams }: { searchParams: Pro
   const { data } = await q.returns<Fila[]>();
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-6 py-8">
       <Suspense><ToastFromSearchParams /></Suspense>
-      <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">Almacén de recortes</h1>
-      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-        Retales reutilizables. Filtrables por estado.
-      </p>
 
-      <form className="mt-4 flex items-end gap-2">
-        <select name="estado" defaultValue={estado} className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950">
-          <option value="conservado">Conservados</option>
-          <option value="pendiente">Pendientes de validar</option>
-          <option value="descartado">Descartados</option>
-          <option value="usado">Ya utilizados</option>
-          <option value="todos">Todos</option>
-        </select>
-        <button type="submit" className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950">Filtrar</button>
+      <PageHeader
+        eyebrow="Taller"
+        title="Almacén de recortes"
+        description="Retales reutilizables tras el nesting. Filtra por estado para gestionarlos."
+      />
+
+      <form className="mt-6 flex flex-wrap items-end gap-3">
+        <div className="w-[240px] space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Estado</label>
+          <select
+            name="estado"
+            defaultValue={estado}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/15"
+          >
+            <option value="conservado">Conservados</option>
+            <option value="pendiente">Pendientes de validar</option>
+            <option value="descartado">Descartados</option>
+            <option value="usado">Ya utilizados</option>
+            <option value="todos">Todos</option>
+          </select>
+        </div>
+        <Button type="submit" variant="outline">Filtrar</Button>
       </form>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {!data || data.length === 0 ? (
-          <div className="p-10 text-center text-sm text-zinc-500 dark:text-zinc-400">
-            Sin recortes {estado !== "todos" ? `en estado "${EST[estado]?.label ?? estado}"` : ""}.
+          <div className="p-6">
+            <EmptyState
+              icon={Scissors}
+              title={`Sin recortes${estado !== "todos" ? ` en estado "${EST[estado]?.label ?? estado}"` : ""}`}
+              description="Los recortes se generan automáticamente tras ejecutar un nesting."
+            />
           </div>
         ) : (
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500 dark:border-zinc-800 dark:bg-zinc-950/50 dark:text-zinc-400">
-              <tr>
-                <th className="px-4 py-2 font-medium">Referencia</th>
-                <th className="px-4 py-2 font-medium">Dimensiones</th>
-                <th className="px-4 py-2 font-medium">Estado</th>
-                <th className="px-4 py-2 font-medium">Creado</th>
-                <th className="px-4 py-2 font-medium">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Referencia</TableHead>
+                <TableHead>Dimensiones</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Creado</TableHead>
+                <TableHead>Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {data.map((rec) => {
                 const est = EST[rec.estado];
                 const conservar = async () => { "use server"; await cambiarEstadoRecorte(rec.id, "conservado", "/app/recortes"); };
                 const descartar = async () => { "use server"; await cambiarEstadoRecorte(rec.id, "descartado", "/app/recortes"); };
                 const usar = async () => { "use server"; await cambiarEstadoRecorte(rec.id, "usado", "/app/recortes"); };
                 return (
-                  <tr key={rec.id}>
-                    <td className="px-4 py-3 text-xs text-zinc-600 dark:text-zinc-400">
+                  <TableRow key={rec.id}>
+                    <TableCell className="text-xs text-muted-foreground">
                       {rec.referencias_tablero?.materiales?.nombre ?? "?"} · {rec.referencias_tablero?.acabados?.nombre ?? "?"} · {rec.referencias_tablero?.grosor_mm ?? "?"} mm
-                    </td>
-                    <td className="px-4 py-3 font-mono text-sm">{rec.largo_mm} × {rec.ancho_mm} mm</td>
-                    <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${est?.color ?? ""}`}>{est?.label ?? rec.estado}</span></td>
-                    <td className="px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400">{new Date(rec.created_at).toLocaleDateString("es-ES")}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3 text-xs">
+                    </TableCell>
+                    <TableCell className="font-mono font-semibold tabular-nums">{rec.largo_mm} × {rec.ancho_mm} mm</TableCell>
+                    <TableCell>
+                      <Badge className={`${ESTADO_COLOR[rec.estado] ?? ""} border-0`}>
+                        {est?.label ?? rec.estado}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {new Date(rec.created_at).toLocaleDateString("es-ES")}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
                         {rec.estado === "pendiente" ? (
                           <>
-                            <form action={conservar}><button type="submit" className="text-emerald-700 hover:underline dark:text-emerald-400">Conservar</button></form>
-                            <form action={descartar}><button type="submit" className="text-red-700 hover:underline dark:text-red-300">Descartar</button></form>
+                            <form action={conservar}>
+                              <Button type="submit" size="xs" variant="outline" className="border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/5 dark:text-emerald-400">
+                                Conservar
+                              </Button>
+                            </form>
+                            <form action={descartar}>
+                              <Button type="submit" size="xs" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/5">
+                                Descartar
+                              </Button>
+                            </form>
                           </>
                         ) : null}
                         {rec.estado === "conservado" ? (
                           <>
-                            <form action={usar}><button type="submit" className="text-violet-700 hover:underline dark:text-violet-400">Marcar usado</button></form>
-                            <form action={descartar}><button type="submit" className="text-red-700 hover:underline dark:text-red-300">Descartar</button></form>
+                            <form action={usar}>
+                              <Button type="submit" size="xs" variant="outline" className="border-violet-500/30 text-violet-700 hover:bg-violet-500/5 dark:text-violet-400">
+                                Usado
+                              </Button>
+                            </form>
+                            <form action={descartar}>
+                              <Button type="submit" size="xs" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/5">
+                                Descartar
+                              </Button>
+                            </form>
                           </>
                         ) : null}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
-
-      <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
-        <Link href="/app/proyectos" className="underline">Volver a proyectos</Link>
-      </p>
     </div>
   );
 }
