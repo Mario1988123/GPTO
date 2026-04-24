@@ -1,23 +1,24 @@
 import Link from "next/link";
 import {
   Users,
-  BookOpen,
-  Boxes,
   FolderKanban,
   Receipt,
   PackageCheck,
   Hammer,
   Scissors,
+  BookOpen,
+  Boxes,
   BarChart3,
-  Settings,
-  ArrowRight,
   TrendingUp,
+  ArrowRight,
+  Plus,
+  FileText,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { formatEur } from "@/lib/tipos/presupuestos";
-import { PageHeader } from "@/components/page-header";
-import { StatCard } from "@/components/stat-card";
-import { EmptyState } from "@/components/empty-state";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
@@ -44,229 +45,244 @@ export default async function AppHomePage() {
   type PedRow = { importe_eur: number };
   const facturadoTotal = ((totalFacturado.data ?? []) as PedRow[]).reduce((a, p) => a + Number(p.importe_eur), 0);
 
-  // @ts-expect-error relacion
-  const empresaNombre = usuario?.empresas?.nombre ?? "GPTO";
   const primerNombre = usuario?.nombre?.split(" ")[0] ?? "admin";
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8 lg:py-10">
-      <PageHeader
-        eyebrow={empresaNombre}
-        title={`Hola, ${primerNombre}`}
-        description="Resumen del estado actual del taller."
-      />
+    <div className="mx-auto max-w-7xl p-6 md:p-8 space-y-8">
+      {/* Bienvenida */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          Hola, {primerNombre} 👋
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Resumen del estado del taller · {new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        </p>
+      </div>
 
-      {/* KPIs */}
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Clientes activos" value={clientesAct.count ?? 0} icon={Users} />
-        <StatCard label="Proyectos en curso" value={proyectosAct.count ?? 0} icon={FolderKanban} />
-        <StatCard label="Presupuestos abiertos" value={presupuestosPend.count ?? 0} icon={Receipt} />
-        <StatCard label="Pedidos en fabricación" value={pedidosEnFab.count ?? 0} icon={PackageCheck} variant="accent" />
-      </section>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Clientes activos" value={clientesAct.count ?? 0} hint="En la base de datos" icon={Users} />
+        <StatCard label="Proyectos en curso" value={proyectosAct.count ?? 0} hint="Abiertos o en fabricación" icon={FolderKanban} />
+        <StatCard label="Presupuestos abiertos" value={presupuestosPend.count ?? 0} hint="Borradores + enviados" icon={Receipt} />
+        <StatCard label="Pedidos en taller" value={pedidosEnFab.count ?? 0} hint="Pendientes y en fábrica" icon={PackageCheck} />
+      </div>
 
-      {/* Banner facturación */}
-      <section className="relative mt-6 overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-foreground via-foreground to-sidebar-primary p-6 text-background shadow-xl lg:p-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,_rgba(255,255,255,0.15)_0%,_transparent_50%)]" />
-        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-70">
-              Facturado · pedidos fabricados y entregados
-            </p>
-            <p className="mt-2 font-mono text-4xl font-bold tracking-tight sm:text-5xl">
-              {formatEur(facturadoTotal)}
-            </p>
+      {/* Facturación */}
+      <Card className="overflow-hidden border-slate-200 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 text-white">
+        <CardContent className="p-8">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                Facturación histórica
+              </p>
+              <p className="mt-2 font-mono text-4xl font-bold tracking-tight sm:text-5xl">
+                {formatEur(facturadoTotal)}
+              </p>
+              <p className="mt-2 text-sm text-slate-300">
+                Pedidos fabricados y entregados
+              </p>
+            </div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 shadow-lg shadow-blue-500/25">
+              <TrendingUp className="h-6 w-6 text-white" />
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-background/10 px-3 py-1.5 text-xs font-semibold backdrop-blur-sm">
-            <TrendingUp className="h-3.5 w-3.5" />
-            Acumulado histórico
-          </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      {/* Gestión */}
-      <section className="mt-10">
-        <div className="mb-4 flex items-end justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Áreas de trabajo
-            </p>
-            <h2 className="mt-0.5 text-lg font-bold tracking-tight">Gestión diaria</h2>
-          </div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <NavCard href="/app/clientes" title="Clientes" desc="Gestión de clientes finales" icon={Users} />
-          <NavCard href="/app/proyectos" title="Proyectos" desc="Configurador 3D + estancias" icon={FolderKanban} />
-          <NavCard href="/app/presupuestos" title="Presupuestos" desc="Cálculo con IVA y PDF" icon={Receipt} />
-          <NavCard href="/app/pedidos" title="Pedidos" desc="Flujo de fabricación" icon={PackageCheck} />
-          <NavCard href="/app/produccion" title="Producción" desc="Kanban de piezas con QR" icon={Hammer} accent />
-          <NavCard href="/app/recortes" title="Recortes" desc="Almacén de merma reutilizable" icon={Scissors} />
-          <NavCard href="/app/catalogo" title="Catálogo" desc="Materiales, acabados, herrajes" icon={BookOpen} />
-          <NavCard href="/app/tipos-modulo" title="Tipos de módulo" desc="Plantillas paramétricas" icon={Boxes} />
-          <NavCard href="/app/informes" title="Informes" desc="Facturación, merma, conversión" icon={BarChart3} />
-        </div>
-      </section>
-
-      {/* Actividad reciente */}
-      <section className="mt-10 grid gap-6 lg:grid-cols-2">
-        <ActivityCard title="Últimos proyectos" href="/app/proyectos" icon={FolderKanban}>
-          {(ultimosProyectos.data ?? []).length === 0 ? (
-            <EmptyState
-              icon={FolderKanban}
-              title="Sin proyectos todavía"
-              description="Crea el primer proyecto para empezar a diseñar armarios."
-            />
-          ) : (
-            <ul className="divide-y divide-border">
-              {((ultimosProyectos.data ?? []) as unknown as { id: string; nombre: string; estado: string; updated_at: string; clientes: { nombre: string } | null }[]).map((p) => (
-                <li key={p.id}>
-                  <Link href={`/app/proyectos/${p.id}`} className="group flex items-center justify-between gap-3 px-5 py-3.5 text-sm transition hover:bg-muted/50">
+      {/* Últimos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Últimos proyectos</CardTitle>
+                <CardDescription>Los 5 más recientes</CardDescription>
+              </div>
+              <Link
+                href="/app/proyectos"
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {(ultimosProyectos.data ?? []).length === 0 ? (
+              <p className="py-8 text-center text-sm text-slate-500">Sin proyectos todavía</p>
+            ) : (
+              <div className="space-y-3">
+                {((ultimosProyectos.data ?? []) as unknown as { id: string; nombre: string; estado: string; clientes: { nombre: string } | null }[]).map((p) => (
+                  <Link
+                    key={p.id}
+                    href={`/app/proyectos/${p.id}`}
+                    className="flex items-center justify-between gap-3 rounded-lg border bg-slate-50 p-3 transition hover:border-slate-300 hover:bg-white hover:shadow-sm"
+                  >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{p.nombre}</p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      <p className="truncate font-medium text-slate-900">{p.nombre}</p>
+                      <p className="truncate text-xs text-slate-500">
                         {p.clientes?.nombre ?? "—"}
                       </p>
                     </div>
-                    <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">
-                      {p.estado}
-                    </Badge>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+                    <Badge variant="secondary">{p.estado}</Badge>
                   </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </ActivityCard>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        <ActivityCard title="Últimos presupuestos" href="/app/presupuestos" icon={Receipt}>
-          {(ultimosPresupuestos.data ?? []).length === 0 ? (
-            <EmptyState
-              icon={Receipt}
-              title="Aún no has creado presupuestos"
-              description="Al aceptar un proyecto se generará automáticamente."
-            />
-          ) : (
-            <ul className="divide-y divide-border">
-              {((ultimosPresupuestos.data ?? []) as unknown as { id: string; numero: string | null; numero_borrador: string | null; estado: string; total_eur: number; proyectos: { nombre: string } | null }[]).map((p) => (
-                <li key={p.id}>
-                  <Link href={`/app/presupuestos/${p.id}`} className="group flex items-center justify-between gap-3 px-5 py-3.5 text-sm transition hover:bg-muted/50">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Últimos presupuestos</CardTitle>
+                <CardDescription>Los 5 más recientes</CardDescription>
+              </div>
+              <Link
+                href="/app/presupuestos"
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {(ultimosPresupuestos.data ?? []).length === 0 ? (
+              <p className="py-8 text-center text-sm text-slate-500">Aún no has creado presupuestos</p>
+            ) : (
+              <div className="space-y-3">
+                {((ultimosPresupuestos.data ?? []) as unknown as { id: string; numero: string | null; numero_borrador: string | null; estado: string; total_eur: number; proyectos: { nombre: string } | null }[]).map((p) => (
+                  <Link
+                    key={p.id}
+                    href={`/app/presupuestos/${p.id}`}
+                    className="flex items-center justify-between gap-3 rounded-lg border bg-slate-50 p-3 transition hover:border-slate-300 hover:bg-white hover:shadow-sm"
+                  >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-mono text-xs font-bold">
+                      <p className="truncate font-mono text-xs font-bold text-slate-900">
                         {p.numero ?? p.numero_borrador ?? "—"}
                       </p>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      <p className="truncate text-xs text-slate-500">
                         {p.proyectos?.nombre ?? "—"}
                       </p>
                     </div>
-                    <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">
-                      {p.estado}
-                    </Badge>
-                    <p className="font-mono text-sm font-bold tabular-nums">{formatEur(Number(p.total_eur))}</p>
+                    <div className="flex items-center gap-2 ml-2">
+                      <Badge variant="secondary">{p.estado}</Badge>
+                      <span className="font-semibold text-sm tabular-nums">
+                        {formatEur(Number(p.total_eur))}
+                      </span>
+                    </div>
                   </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </ActivityCard>
-      </section>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Ajustes discreto */}
-      <section className="mt-10 pb-8">
-        <Link
-          href="/app/ajustes"
-          className="flex items-center justify-between rounded-xl border border-dashed border-border bg-muted/30 px-5 py-4 text-sm transition hover:border-foreground/20 hover:bg-muted/50"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background text-muted-foreground ring-1 ring-border">
-              <Settings className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Ajustes de la empresa</p>
-              <p className="text-xs text-muted-foreground">IVA, datos fiscales, numeración, usuarios</p>
-            </div>
+      {/* Acciones rápidas */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Acciones rápidas</CardTitle>
+          <CardDescription>Empieza un nuevo trabajo</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <QuickAction href="/app/clientes/nuevo" icon={Users} label="Nuevo cliente" />
+            <QuickAction href="/app/proyectos/nuevo" icon={FolderKanban} label="Nuevo proyecto" />
+            <QuickAction href="/app/produccion" icon={Hammer} label="Ver producción" />
+            <QuickAction href="/app/recortes" icon={Scissors} label="Almacén recortes" />
+            <QuickAction href="/app/informes" icon={BarChart3} label="Informes" />
           </div>
-          <ArrowRight className="h-4 w-4 text-muted-foreground" />
-        </Link>
-      </section>
+        </CardContent>
+      </Card>
+
+      {/* Áreas de gestión */}
+      <div>
+        <div className="mb-4">
+          <h2 className="text-lg font-bold tracking-tight text-slate-900">Gestión</h2>
+          <p className="text-sm text-slate-500">Todas las áreas del taller</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <NavCard href="/app/clientes" icon={Users} label="Clientes" desc="Gestión CRM" />
+          <NavCard href="/app/proyectos" icon={FolderKanban} label="Proyectos" desc="Configurador 3D" />
+          <NavCard href="/app/presupuestos" icon={Receipt} label="Presupuestos" desc="IVA y PDF" />
+          <NavCard href="/app/pedidos" icon={PackageCheck} label="Pedidos" desc="Confirmados" />
+          <NavCard href="/app/produccion" icon={Hammer} label="Producción" desc="Kanban piezas" />
+          <NavCard href="/app/recortes" icon={Scissors} label="Recortes" desc="Merma reutilizable" />
+          <NavCard href="/app/catalogo" icon={BookOpen} label="Catálogo" desc="Materiales" />
+          <NavCard href="/app/tipos-modulo" icon={Boxes} label="Tipos de módulo" desc="Plantillas" />
+        </div>
+      </div>
     </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+}: {
+  label: string;
+  value: number | string;
+  hint?: string;
+  icon: LucideIcon;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium text-slate-700">{label}</CardTitle>
+        <Icon className="h-4 w-4 text-slate-500" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold tabular-nums">{value}</div>
+        {hint ? <p className="text-xs text-slate-500">{hint}</p> : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuickAction({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </Link>
   );
 }
 
 function NavCard({
   href,
-  title,
-  desc,
   icon: Icon,
-  accent = false,
+  label,
+  desc,
 }: {
   href: string;
-  title: string;
+  icon: LucideIcon;
+  label: string;
   desc: string;
-  icon: React.ComponentType<{ className?: string }>;
-  accent?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className={`group relative overflow-hidden rounded-2xl border p-5 transition-all hover:-translate-y-0.5 hover:shadow-lg ${
-        accent
-          ? "border-foreground/20 bg-gradient-to-br from-card to-muted shadow-sm"
-          : "border-border bg-card hover:border-foreground/20"
-      }`}
+      className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
     >
-      {accent ? (
-        <div className="absolute right-0 top-0 h-16 w-16 -translate-y-1/2 translate-x-1/2 rounded-full bg-sidebar-primary/10 blur-2xl" />
-      ) : null}
-      <div className="relative flex items-start gap-3">
-        <div
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition ${
-            accent
-              ? "bg-foreground text-background shadow-md shadow-foreground/20"
-              : "bg-muted text-foreground group-hover:bg-foreground group-hover:text-background"
-          }`}
-        >
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-base font-bold tracking-tight">{title}</p>
-            <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
-        </div>
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 text-white shadow-md shadow-blue-500/20 transition group-hover:shadow-lg group-hover:shadow-blue-500/30">
+        <Icon className="h-5 w-5" />
       </div>
+      <p className="mt-3 text-sm font-semibold text-slate-900">{label}</p>
+      <p className="mt-0.5 text-xs text-slate-500">{desc}</p>
     </Link>
-  );
-}
-
-function ActivityCard({
-  title,
-  href,
-  icon: Icon,
-  children,
-}: {
-  title: string;
-  href?: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
-        <div className="flex items-center gap-2">
-          {Icon ? <Icon className="h-4 w-4 text-muted-foreground" /> : null}
-          <h3 className="text-sm font-bold tracking-tight">{title}</h3>
-        </div>
-        {href ? (
-          <Link
-            href={href}
-            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
-          >
-            Ver todo
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-        ) : null}
-      </div>
-      {children}
-    </div>
   );
 }
