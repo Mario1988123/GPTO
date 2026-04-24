@@ -23,7 +23,7 @@ import type {
 } from "@/lib/tipos/proyectos";
 import { Plano2D } from "./plano-2d";
 import { EstanciaEditor, AberturasEditor } from "./estancia-editor";
-import { Estancia3D } from "./estancia-3d";
+import { Estancia3DLazy as Estancia3D } from "./estancia-3d-lazy";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";

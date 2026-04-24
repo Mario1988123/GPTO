@@ -12,7 +12,7 @@ import {
 } from "../../../actions";
 import { ToastFromSearchParams } from "../../../../catalogo/shared";
 import { AnadirModuloForm } from "./anadir-modulo";
-import { EditorArmarioPro } from "./editor-armario-pro";
+import { EditorArmarioProLazy as EditorArmarioPro } from "./editor-armario-pro-lazy";
 import { ARPreviewLazy } from "./ar-preview-lazy";
 import { ProponerDisenoForm } from "./proponer-diseno";
 import {
