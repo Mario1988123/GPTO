@@ -6,6 +6,65 @@ Estado vivo del proyecto. Se actualiza al final de cada iteración.
 
 ## Iteraciones más recientes
 
+### Capa 14 + 15 — Editor 3D pro + Plano estancia 2D/3D · ✅ Cerradas
+**Fecha**: 2026-04-24
+
+**Capa 14 — Editor 3D pro del armario**
+- **Migraciones aplicadas**:
+  - `033_modulo_subelementos.sql` — tabla con 17 tipos de subelemento (cajón, baldas fija/regulable, puertas abatible/corredera/plegable, barra colgar, hueco abierto, tapeta ciega, espejo, rebaje LED, zapatero, cesto extraíble, corbatero, joyero, portapantalones, canaleta tirador).
+  - `034_modulos_armario_posicion.sql` — ALTER añade `posicion_x_mm`, `posicion_y_mm`, `tiene_led_rebaje`, `led_color_hex`, `led_intensidad_lm_m`.
+- **`armario-3d-pro.tsx`** (nuevo, reemplaza al antiguo 3D estático):
+  - `ContactShadows` + `Environment preset="apartment"` + fog + iluminación showroom (ambient + key + fill + pointLight cálido arriba).
+  - `PivotControls` de drei activo sobre el módulo seleccionado (ejes X/Y) → arrastra para mover en horizontal Y vertical; se persiste vía server action al soltar.
+  - Subelementos renderizados individualmente:
+    - Cajones: caja interior + panel frontal saliente + tirador lineal metálico.
+    - Puertas abatibles/correderas/plegables: panel + bisagras + tirador; espejos con metalness/envMap alto.
+    - Baldas fijas (placa 18 mm) y regulables (4 pivotes).
+    - Barra colgar como cilindro horizontal con soportes.
+    - Rebaje LED con `emissiveIntensity` + pointLight coloreada.
+    - Complementos (zapatero con inclinación, cesto wireframe, corbatero/portapantalones como barra metálica, joyero, canaleta tirador).
+  - Texto del módulo DENTRO usando `<Html>` billboard con `distanceFactor` y textShadow; nunca se solapa.
+  - `OrbitControls` se desactiva mientras hay drag activo.
+- **Panel lateral** (`editor-armario-pro.tsx`, client):
+  - Inputs X/Y numéricos con botón "Aplicar posición" (además del drag 3D).
+  - Control LED: checkbox + color picker + lm/m.
+  - CRUD subelementos con acordeón, optgroups por grupo (Interior/Frentes/Complementos), alto en mm, etiqueta, orden.
+  - Lista rápida de módulos para saltar selección.
+- Auto-layout legacy: si todos los módulos tienen `posicion_x_mm=0 posicion_y_mm=0`, se apilan horizontalmente en render.
+
+**Capa 15 — Plano de estancia 2D + 3D**
+- **Migraciones aplicadas**:
+  - `031_estancia_geometria.sql` — tabla 1:1 con estancia. `tipo: 'rectangular' | 'poligono'`, `puntos JSONB` (array `{x, y}` en mm), `alto_pared_mm`.
+  - `032_aberturas.sql` — tabla de puertas/ventanas. `pared_idx`, `x_en_pared_mm`, `ancho_mm`, `alto_mm`, `antepecho_mm`, `etiqueta`.
+- **`estancia-editor.tsx`** (client):
+  - Tabs Rectangular / Polígono libre. Rectangular = 3 inputs (largo/ancho/alto pared). Polígono = inputs X/Y editables por vértice + botón añadir/quitar.
+  - Preview SVG en planta con grid, paredes numeradas (círculos con índice + longitud), puertas (arco de apertura) y ventanas (doble línea con antepecho).
+  - Botón "Guardar geometría" persiste vía server action.
+- **`AberturasEditor`** (mismo archivo):
+  - Lista de aberturas existentes con icono `DoorOpen`/`DoorClosed`.
+  - Form para añadir: tipo, pared (dropdown con N paredes), offset x, ancho, alto, antepecho, etiqueta.
+- **`estancia-3d.tsx`**:
+  - Canvas R3F con `Environment apartment`, `ContactShadows`, grid infinito, fog.
+  - Suelo con bounding box.
+  - Paredes extruidas con **huecos reales** (split por segmentos: muro sólido + dinteles encima + antepechos bajo ventanas).
+  - Marcos de puertas/ventanas con color madera/aluminio.
+  - Cristales ventana con `meshPhysicalMaterial` transmisión 0.85.
+  - Hojas de puerta entornadas (rotación ~-40°).
+  - Armarios posicionados en 3D según `plano_x_mm/y_mm/rotacion`, con etiqueta flotante.
+
+**Fallback compatibilidad**
+- Si `estancia_geometria` no existe pero la estancia tiene `largo_mm`/`ancho_mm` → se construye rectangular on-the-fly para renderizar el 3D.
+
+**Server actions nuevos**
+- `subelementos-actions.ts`: `crearSubelemento`, `actualizarSubelemento`, `eliminarSubelemento`, `moverPosicionModulo`, `actualizarLedModulo`.
+- `estancia-geometria-actions.ts`: `guardarGeometriaRectangular`, `guardarGeometriaPoligono`, `crearAbertura`, `actualizarAbertura`, `eliminarAbertura`.
+
+**Tipos TS añadidos** en `src/lib/tipos/proyectos.ts`: `TipoSubelemento`, `SUBELEMENTOS_META`, `ModuloSubelemento`, `EstanciaGeometria`, `Abertura`. `ModuloArmario` ampliado con `posicion_x_mm/y_mm` + LED.
+
+**Pendiente Capa 16 — UI v3**: esperando referencia visual (zip) de Mario.
+
+---
+
 ### Capa 13 — Rediseño UI v2 completo · ✅ Cerrada
 **Fecha**: 2026-04-24
 
