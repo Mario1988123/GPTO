@@ -13,6 +13,7 @@ import {
 import { ToastFromSearchParams } from "../../../../catalogo/shared";
 import { AnadirModuloForm } from "./anadir-modulo";
 import { EditorArmarioPro } from "./editor-armario-pro";
+import { ARPreview } from "./ar-preview";
 import { ProponerDisenoForm } from "./proponer-diseno";
 import {
   crearSubelemento,
@@ -255,6 +256,40 @@ export default async function ConfiguradorArmarioPage({
             }}
           />
         )}
+      </section>
+
+      {/* AR Preview */}
+      <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+        <div className="mb-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Realidad aumentada</p>
+          <h2 className="mt-0.5 text-lg font-bold tracking-tight">Previsualizar sobre foto</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Sube una foto de la pared o habitación y ajusta el armario 3D encima para enseñárselo al cliente.
+          </p>
+        </div>
+        <ARPreview
+          armario_ancho_mm={armario.ancho_total_mm}
+          armario_alto_mm={armario.alto_total_mm}
+          armario_fondo_mm={armario.fondo_mm}
+          tipo_instalacion={armario.tipo_instalacion}
+          margen_tapeta_mm={armario.margen_tapeta_mm}
+          modulos={modulosConPos.map((m, i) => ({
+            id: m.id,
+            nombre: m.nombre_override ?? m.tipos_modulo?.nombre ?? "Módulo",
+            ancho_mm: m.ancho_mm,
+            alto_mm: m.alto_mm,
+            fondo_mm: m.fondo_mm,
+            posicion_x_mm: m.posicion_x_mm,
+            posicion_y_mm: m.posicion_y_mm,
+            particiones: m.particiones_verticales ?? 1,
+            color: PALETA[i % PALETA.length],
+            tiene_led_rebaje: m.tiene_led_rebaje ?? false,
+            led_color_hex: m.led_color_hex ?? null,
+            led_intensidad_lm_m: m.led_intensidad_lm_m ?? null,
+            categoria: m.tipos_modulo?.categoria ?? null,
+            subelementos: m.modulo_subelementos ?? [],
+          }))}
+        />
       </section>
 
       {/* Form editar armario */}
