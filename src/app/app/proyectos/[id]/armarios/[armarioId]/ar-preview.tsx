@@ -40,8 +40,19 @@ export function ARPreview(props: Props) {
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      toast.error("Selecciona un archivo de imagen (JPG, PNG, WebP)");
+      return;
+    }
+    if (f.size > 15 * 1024 * 1024) {
+      toast.error("Imagen demasiado grande (máx 15 MB)");
+      return;
+    }
+    // Revocar URL previa si la había
+    if (fotoUrl) URL.revokeObjectURL(fotoUrl);
     const url = URL.createObjectURL(f);
     setFotoUrl(url);
+    setHipereal(null);
   }
 
   async function descargar() {
@@ -163,13 +174,13 @@ export function ARPreview(props: Props) {
             className="relative w-full overflow-hidden rounded-xl border border-slate-300 bg-black"
             style={{ aspectRatio: "16 / 10" }}
           >
-            {/* Foto de fondo */}
+            {/* Foto de fondo (blob local, sin crossOrigin) */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={fotoUrl}
               alt="Fondo"
               className="absolute inset-0 h-full w-full object-cover"
-              crossOrigin="anonymous"
+              onError={() => toast.error("No se pudo cargar la imagen. Prueba con JPG/PNG de menos de 10 MB.")}
             />
 
             {/* Canvas 3D encima con opacidad */}
