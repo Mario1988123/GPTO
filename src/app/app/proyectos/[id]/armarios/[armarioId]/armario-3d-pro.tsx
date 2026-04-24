@@ -2,9 +2,8 @@
 
 import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Grid, Edges, Text } from "@react-three/drei";
-import { Suspense, useMemo, useRef, useState, useTransition } from "react";
+import { Suspense, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import type { Matrix4 } from "three";
 import { SUBELEMENTOS_META, type ModuloSubelemento, type TipoSubelemento } from "@/lib/tipos/proyectos";
 import type { AcabadoKey } from "@/lib/render/materiales";
 import { ACABADOS } from "@/lib/render/materiales";
@@ -24,6 +23,11 @@ export type ModuloPro = {
   led_intensidad_lm_m: number | null;
   categoria: string | null;
   subelementos: ModuloSubelemento[];
+  tableros_grosor_mm?: number | null;
+  trasera_grosor_mm?: number | null;
+  separacion_cajones_mm?: number;
+  mostrar_puertas?: boolean;
+  grosor_tablero_default_mm?: number; // Viene de referencia_tablero_id
 };
 
 type Props = {
@@ -40,8 +44,10 @@ type Props = {
 };
 
 const COLOR_SEL = "#f97316";
+const TRASERA_DEFAULT_MM = 10;
+const GROSOR_DEFAULT_MM = 16;
 
-/** Contenido 3D puro (sin Canvas). Se monta dentro de cualquier Canvas externo. */
+/** Contenido 3D puro (sin Canvas). */
 export function ArmarioScene({
   armario_ancho_mm,
   armario_alto_mm,
@@ -87,25 +93,22 @@ export function ArmarioScene({
         <mesh position={[W / 2, H / 2, D / 2 - 0.005]}>
           <boxGeometry args={[W + 2 * margen, H + 2 * margen, D + margen]} />
           <meshBasicMaterial color="#f59e0b" transparent opacity={0.04} />
-          <Edges color="#f59e0b" lineWidth={1.5} />
+          <Edges color="#f59e0b" lineWidth={1.2} />
         </mesh>
       ) : null}
 
-      {/* Bounding armario */}
+      {/* Bounding wireframe ligero del armario */}
       <mesh position={[W / 2, H / 2, D / 2]}>
         <boxGeometry args={[W, H, D]} />
-        <meshBasicMaterial color="#18181b" transparent opacity={0.02} />
-        <Edges color="#27272a" lineWidth={1.5} />
+        <meshBasicMaterial color="#18181b" transparent opacity={0.01} />
+        <Edges color="#27272a" lineWidth={0.8} />
       </mesh>
 
       {modulos.map((m) => (
         <ModuloMesh
           key={m.id}
           modulo={m}
-          otrosModulos={modulos.filter((x) => x.id !== m.id)}
-          armarioAnchoMm={armario_ancho_mm}
-          armarioAltoMm={armario_alto_mm}
-          color={acab.base}
+          colorAcabado={acab.base}
           k={k}
           H={H}
           D={D}
@@ -134,7 +137,7 @@ export function ArmarioScene({
   );
 }
 
-/** Wrapper con Canvas + iluminación. Usado en el editor principal. */
+/** Wrapper con Canvas + iluminación. */
 export function Armario3DPro(props: Props) {
   const k = 0.001;
   const W = props.armario_ancho_mm * k;
@@ -147,8 +150,8 @@ export function Armario3DPro(props: Props) {
     <div className="relative">
       <div className="h-[560px] w-full overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-slate-100 via-white to-slate-200">
         <Canvas camera={{ position: [camDist, camDist * 0.7, camDist], fov: 35 }} dpr={[1, 1.5]}>
-          <color attach="background" args={["#f4f4f5"]} />
-          <ambientLight intensity={0.65} />
+          <color attach="background" args={["#f5f5f5"]} />
+          <ambientLight intensity={0.7} />
           <directionalLight position={[6, 10, 5]} intensity={1.0} />
           <directionalLight position={[-4, 6, -3]} intensity={0.3} />
           <Suspense fallback={null}>
@@ -157,20 +160,20 @@ export function Armario3DPro(props: Props) {
         </Canvas>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        💡 Click en un módulo para seleccionarlo · rueda para zoom · click-drag fondo para rotar.
+        💡 Click en un módulo para seleccionar · rueda para zoom · click-drag para rotar. Los
+        cajones con <strong>proveedor externo</strong> se muestran con borde punteado.
       </p>
     </div>
   );
 }
 
-const SNAP_TOL_MM = 30;
-
+/**
+ * Un módulo se renderiza como 6 tableros separados con grosor real, más subelementos internos
+ * (cajones, baldas, barras) y puertas opcionales.
+ */
 function ModuloMesh({
   modulo,
-  otrosModulos,
-  armarioAnchoMm,
-  armarioAltoMm,
-  color,
+  colorAcabado,
   k,
   H,
   D,
@@ -179,10 +182,7 @@ function ModuloMesh({
   onMoveEnd,
 }: {
   modulo: ModuloPro;
-  otrosModulos: ModuloPro[];
-  armarioAnchoMm: number;
-  armarioAltoMm: number;
-  color: string;
+  colorAcabado: string;
   k: number;
   H: number;
   D: number;
@@ -190,78 +190,132 @@ function ModuloMesh({
   onClick: () => void;
   onMoveEnd: (x_mm: number, y_mm: number) => void;
 }) {
+  void onMoveEnd;
+
   const mw = modulo.ancho_mm * k;
   const mh = Math.min(modulo.alto_mm * k, H);
   const md = Math.min(modulo.fondo_mm * k, D);
   const px = modulo.posicion_x_mm * k;
   const py = modulo.posicion_y_mm * k;
 
-  void armarioAnchoMm;
-  void armarioAltoMm;
-  void otrosModulos;
-  void onMoveEnd;
-  void SNAP_TOL_MM;
+  const gMm = modulo.tableros_grosor_mm ?? modulo.grosor_tablero_default_mm ?? GROSOR_DEFAULT_MM;
+  const trMm = modulo.trasera_grosor_mm ?? TRASERA_DEFAULT_MM;
+  const g = gMm * k;
+  const tr = trMm * k;
+
+  // Medidas interiores (dentro de los tableros)
+  const mwInt = Math.max(0.02, mw - 2 * g);
+  const mhInt = Math.max(0.02, mh - 2 * g);
+  const mdInt = Math.max(0.02, md - tr);
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     onClick();
   };
 
-  const bodyColor = isSelected ? COLOR_SEL : (modulo.color || color);
-  const ringColor = isSelected ? "#c2410c" : "#1e1e22";
+  const tableroColor = isSelected ? COLOR_SEL : modulo.color || colorAcabado;
+  const edgeColor = isSelected ? "#c2410c" : "#2e2a26";
+  const edgeWidth = isSelected ? 2.0 : 0.5;
 
   return (
     <group position={[px, py, 0]}>
       <group position={[mw / 2, mh / 2, md / 2]} onClick={handleClick}>
-        <mesh>
-          <boxGeometry args={[mw, mh, md]} />
-          <meshStandardMaterial
-            color={bodyColor}
-            roughness={0.55}
-            metalness={0.05}
-            emissive={isSelected ? COLOR_SEL : "#000000"}
-            emissiveIntensity={isSelected ? 0.15 : 0}
-          />
-        </mesh>
-        <Edges color={ringColor} lineWidth={isSelected ? 2.5 : 0.7} />
+        {/* SUELO */}
+        <TableroMesh
+          size={[mw, g, md]}
+          position={[0, -mh / 2 + g / 2, 0]}
+          color={tableroColor}
+          edgeColor={edgeColor}
+          edgeWidth={edgeWidth}
+        />
+        {/* TECHO */}
+        <TableroMesh
+          size={[mw, g, md]}
+          position={[0, mh / 2 - g / 2, 0]}
+          color={tableroColor}
+          edgeColor={edgeColor}
+          edgeWidth={edgeWidth}
+        />
+        {/* LATERAL IZQUIERDO */}
+        <TableroMesh
+          size={[g, mhInt, md]}
+          position={[-mw / 2 + g / 2, 0, 0]}
+          color={tableroColor}
+          edgeColor={edgeColor}
+          edgeWidth={edgeWidth}
+        />
+        {/* LATERAL DERECHO */}
+        <TableroMesh
+          size={[g, mhInt, md]}
+          position={[mw / 2 - g / 2, 0, 0]}
+          color={tableroColor}
+          edgeColor={edgeColor}
+          edgeWidth={edgeWidth}
+        />
+        {/* TRASERA (más fina) */}
+        <TableroMesh
+          size={[mwInt, mhInt, tr]}
+          position={[0, 0, -md / 2 + tr / 2]}
+          color={tableroColor}
+          edgeColor={edgeColor}
+          edgeWidth={edgeWidth}
+        />
 
-        {/* Particiones verticales */}
+        {/* Particiones verticales: si particiones > 1, líneas horizontales indicativas */}
         {modulo.particiones > 1
           ? Array.from({ length: modulo.particiones - 1 }).map((_, i) => {
-              const y = -mh / 2 + (mh / modulo.particiones) * (i + 1);
+              const y = -mhInt / 2 + (mhInt / modulo.particiones) * (i + 1);
               return (
-                <mesh key={i} position={[0, y, md / 2 + 0.001]}>
-                  <boxGeometry args={[mw - 0.005, 0.003, 0.001]} />
+                <mesh key={i} position={[0, y, md / 2 - tr]}>
+                  <boxGeometry args={[mwInt, 0.004, 0.002]} />
                   <meshBasicMaterial color="#c2410c" />
                 </mesh>
               );
             })
           : null}
 
-        {/* LED rebaje */}
+        {/* LED rebaje (en canto frontal superior) */}
         {modulo.tiene_led_rebaje ? (
-          <mesh position={[0, mh / 2 - 0.005, md / 2 - 0.003]}>
-            <boxGeometry args={[mw - 0.005, 0.004, 0.004]} />
+          <mesh position={[0, mh / 2 - g - 0.006, md / 2 - 0.005]}>
+            <boxGeometry args={[mwInt, 0.006, 0.006]} />
             <meshStandardMaterial
               color={modulo.led_color_hex ?? "#ffe066"}
               emissive={modulo.led_color_hex ?? "#ffe066"}
-              emissiveIntensity={1.2}
+              emissiveIntensity={1.5}
             />
           </mesh>
         ) : null}
 
-        {/* Subelementos */}
-        <Subelementos modulo={modulo} mw={mw} mh={mh} md={md} />
+        {/* SUBELEMENTOS INTERIORES (cajones, baldas, barras, etc) */}
+        <Subelementos
+          modulo={modulo}
+          mw={mw}
+          mh={mh}
+          md={md}
+          g={g}
+          tr={tr}
+          mwInt={mwInt}
+          mhInt={mhInt}
+          mdInt={mdInt}
+          tableroColor={tableroColor}
+        />
 
-        {/* Etiqueta DENTRO del módulo, en el frente */}
+        {/* PUERTAS (si hay, con toggle mostrar_puertas) */}
+        {(modulo.mostrar_puertas ?? true) ? (
+          <Puertas modulo={modulo} mw={mw} mh={mh} md={md} color={tableroColor} />
+        ) : null}
+
+        {/* Etiqueta nombre del módulo DENTRO en el frente */}
         <Text
-          position={[0, 0, md / 2 + 0.002]}
-          fontSize={Math.max(0.04, Math.min(0.08, mw * 0.2))}
+          position={[0, 0, md / 2 - tr - 0.002]}
+          fontSize={Math.max(0.04, Math.min(0.08, mw * 0.15))}
           color={isSelected ? "#7c2d12" : "#1e1e22"}
           anchorX="center"
           anchorY="middle"
-          outlineWidth={0.001}
+          outlineWidth={0.002}
           outlineColor="#ffffff"
+          maxWidth={mwInt * 0.9}
+          textAlign="center"
         >
           {modulo.nombre}
         </Text>
@@ -270,19 +324,56 @@ function ModuloMesh({
   );
 }
 
+function TableroMesh({
+  size,
+  position,
+  color,
+  edgeColor,
+  edgeWidth,
+}: {
+  size: [number, number, number];
+  position: [number, number, number];
+  color: string;
+  edgeColor: string;
+  edgeWidth: number;
+}) {
+  return (
+    <mesh position={position}>
+      <boxGeometry args={size} />
+      <meshStandardMaterial color={color} roughness={0.55} metalness={0.04} />
+      <Edges color={edgeColor} lineWidth={edgeWidth} />
+    </mesh>
+  );
+}
+
 function Subelementos({
   modulo,
   mw,
   mh,
   md,
+  g,
+  tr,
+  mwInt,
+  mhInt,
+  mdInt,
+  tableroColor,
 }: {
   modulo: ModuloPro;
   mw: number;
   mh: number;
   md: number;
+  g: number;
+  tr: number;
+  mwInt: number;
+  mhInt: number;
+  mdInt: number;
+  tableroColor: string;
 }) {
   const k = 0.001;
-  // Auto-generar cajones si es cajonera y no tiene subelementos
+  void mw;
+  void tr;
+
+  // Autogenerar cajones si categoria es cajonera y no hay subelementos
   const sub = useMemo(() => {
     if (modulo.subelementos.length > 0) return modulo.subelementos;
     const cat = (modulo.categoria ?? "").toLowerCase();
@@ -290,18 +381,23 @@ function Subelementos({
       const n = 4;
       const alto = Math.round(modulo.alto_mm / n);
       return Array.from({ length: n }).map((_, i) => ({
-        id: `v-${i}`,
+        id: `v-cajon-${i}`,
         empresa_id: "",
         modulo_id: modulo.id,
         tipo: "cajon" as TipoSubelemento,
         orden: i,
         alto_mm: alto,
         ancho_mm: null,
+        fondo_mm: null,
         offset_x_mm: 0,
         offset_y_mm: 0,
         offset_z_mm: 0,
         config: {},
         etiqueta: null,
+        es_propio: true,
+        proveedor_nombre: null,
+        precio_override_eur: null,
+        ref_proveedor: null,
         created_at: "",
         updated_at: "",
       }));
@@ -309,63 +405,265 @@ function Subelementos({
     return [];
   }, [modulo]);
 
-  const interior = sub.filter((s) =>
-    ["cajon", "balda_fija", "balda_regulable", "barra_colgar"].includes(s.tipo),
-  );
+  const interior = [...sub]
+    .filter((s) =>
+      ["cajon", "balda_fija", "balda_regulable", "barra_colgar", "hueco_abierto"].includes(s.tipo),
+    )
+    .sort((a, b) => a.orden - b.orden);
+
   if (interior.length === 0) return null;
 
+  const sepMm = modulo.separacion_cajones_mm ?? 2;
+  const sep = sepMm * k;
+
+  // Calcular altos automáticamente para los que no tienen alto_mm
   const totalDefinido = interior.reduce((a, s) => a + (s.alto_mm ?? 0), 0);
   const libre = Math.max(0, modulo.alto_mm - totalDefinido);
   const indefinidos = interior.filter((s) => !s.alto_mm).length;
-  const altoAuto = indefinidos > 0 ? libre / indefinidos : 0;
+  const altoAutoMm = indefinidos > 0 ? libre / indefinidos : 0;
 
-  let yAcum = 0;
+  // Espacio vertical interior disponible (entre suelo y techo del módulo)
+  // yInt0 = -mhInt/2 (suelo interior), sube hacia arriba
+  let yCursorMm = 0;
+
+  const elementos = interior.map((s, idx) => {
+    const altoMm = s.alto_mm && s.alto_mm > 0 ? s.alto_mm : altoAutoMm;
+    const yStart = yCursorMm;
+    yCursorMm += altoMm;
+    return { sub: s, idx, altoMm, yStartMm: yStart };
+  });
+
   return (
     <>
-      {[...interior]
-        .sort((a, b) => a.orden - b.orden)
-        .map((s) => {
-          const altoMm = s.alto_mm && s.alto_mm > 0 ? s.alto_mm : altoAuto;
-          const altoM = altoMm * k;
-          const yC = -mh / 2 + yAcum * k + altoM / 2;
-          yAcum += altoMm;
-          const meta = SUBELEMENTOS_META[s.tipo];
-          const col = meta?.color ?? "#a07855";
+      {elementos.map(({ sub: s, altoMm, yStartMm }, idx) => {
+        const altoM = altoMm * k;
+        // yC es el centro del slot vertical, situado a -mhInt/2 + yStartM + altoM/2
+        const yC = -mhInt / 2 + yStartMm * k + altoM / 2;
 
-          if (s.tipo === "cajon") {
-            return (
-              <group key={s.id} position={[0, yC, 0]}>
-                <mesh position={[0, 0, md / 2 - 0.005]}>
-                  <boxGeometry args={[mw * 0.94, altoM * 0.88, 0.016]} />
-                  <meshStandardMaterial color={col} roughness={0.45} />
-                  <Edges color="#2a2420" lineWidth={0.7} />
-                </mesh>
-                <mesh position={[0, altoM * 0.28, md / 2 + 0.006]}>
-                  <boxGeometry args={[mw * 0.55, 0.014, 0.008]} />
-                  <meshStandardMaterial color="#2a2a2a" metalness={0.6} roughness={0.3} />
-                </mesh>
-              </group>
-            );
-          }
-          if (s.tipo === "balda_fija" || s.tipo === "balda_regulable") {
-            return (
-              <mesh key={s.id} position={[0, yC - altoM / 2 + 0.009, 0]}>
-                <boxGeometry args={[mw * 0.98, 0.018, md * 0.92]} />
-                <meshStandardMaterial color={col} roughness={0.5} />
-                <Edges color="#332e29" lineWidth={0.6} />
+        if (s.tipo === "cajon") {
+          return (
+            <CajonMesh
+              key={s.id}
+              sub={s}
+              yCenter={yC}
+              altoSlot={altoM}
+              mw={mw}
+              md={md}
+              g={g}
+              sep={sep}
+              mwInt={mwInt}
+              mdInt={mdInt}
+              tableroColor={tableroColor}
+              isLast={idx === elementos.length - 1}
+            />
+          );
+        }
+        if (s.tipo === "balda_fija" || s.tipo === "balda_regulable") {
+          // Balda: placa horizontal en la base del slot
+          const yBalda = yC - altoM / 2 + g / 2;
+          return (
+            <group key={s.id}>
+              <mesh position={[0, yBalda, 0]}>
+                <boxGeometry args={[mwInt - 0.002, g, mdInt - 0.002]} />
+                <meshStandardMaterial color={tableroColor} roughness={0.55} />
+                <Edges color="#2a2420" lineWidth={0.4} />
               </mesh>
-            );
-          }
-          if (s.tipo === "barra_colgar") {
-            return (
-              <mesh key={s.id} position={[0, yC, 0]} rotation={[0, 0, Math.PI / 2]}>
-                <cylinderGeometry args={[0.012, 0.012, mw * 0.9, 12]} />
+              {s.tipo === "balda_regulable" ? (
+                <>
+                  <mesh position={[-mwInt / 2 + 0.01, yBalda + g / 2 + 0.005, mdInt / 2 - 0.02]}>
+                    <cylinderGeometry args={[0.003, 0.003, 0.01, 8]} />
+                    <meshStandardMaterial color="#888" metalness={0.7} />
+                  </mesh>
+                  <mesh position={[mwInt / 2 - 0.01, yBalda + g / 2 + 0.005, mdInt / 2 - 0.02]}>
+                    <cylinderGeometry args={[0.003, 0.003, 0.01, 8]} />
+                    <meshStandardMaterial color="#888" metalness={0.7} />
+                  </mesh>
+                </>
+              ) : null}
+            </group>
+          );
+        }
+        if (s.tipo === "barra_colgar") {
+          // Cilindro horizontal centrado verticalmente
+          return (
+            <group key={s.id} position={[0, yC, 0]}>
+              <mesh rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.012, 0.012, mwInt * 0.95, 14]} />
                 <meshStandardMaterial color="#9ca3af" metalness={0.7} roughness={0.25} />
               </mesh>
-            );
-          }
-          return null;
-        })}
+              {/* Soportes */}
+              <mesh position={[-mwInt / 2 + 0.008, 0, 0]}>
+                <cylinderGeometry args={[0.013, 0.013, 0.02, 10]} />
+                <meshStandardMaterial color="#4b5563" />
+              </mesh>
+              <mesh position={[mwInt / 2 - 0.008, 0, 0]}>
+                <cylinderGeometry args={[0.013, 0.013, 0.02, 10]} />
+                <meshStandardMaterial color="#4b5563" />
+              </mesh>
+            </group>
+          );
+        }
+        return null;
+      })}
+    </>
+  );
+}
+
+function CajonMesh({
+  sub,
+  yCenter,
+  altoSlot,
+  mw,
+  md,
+  g,
+  sep,
+  mwInt,
+  mdInt,
+  tableroColor,
+  isLast,
+}: {
+  sub: ModuloSubelemento;
+  yCenter: number;
+  altoSlot: number;
+  mw: number;
+  md: number;
+  g: number;
+  sep: number;
+  mwInt: number;
+  mdInt: number;
+  tableroColor: string;
+  isLast: boolean;
+}) {
+  void isLast;
+  void g;
+  void mw;
+
+  // Frente: ancho = ancho interior + g (sobresale los cantos), alto = altoSlot - sep (hueco entre cajones)
+  const altoFrente = Math.max(0.04, altoSlot - sep);
+  const anchoFrente = mwInt - 0.002;
+
+  // Caja interior del cajón (costados y fondo)
+  const anchoCaja = mwInt - 0.02;
+  const altoCaja = altoFrente * 0.85;
+  const fondoCaja = mdInt * 0.85;
+
+  const esExterno = !sub.es_propio;
+  const colorFrente = esExterno
+    ? "#8b9ba8" // gris azulado para cajón externo
+    : tableroColor;
+  const colorCaja = esExterno ? "#c5cdd3" : tableroColor;
+
+  return (
+    <group position={[0, yCenter, 0]}>
+      {/* Caja del cajón (contenedor interior) */}
+      <group position={[0, 0, -fondoCaja / 2 + mdInt / 2 - 0.01]}>
+        {/* Fondo del cajón */}
+        <mesh position={[0, -altoCaja / 2 + 0.004, 0]}>
+          <boxGeometry args={[anchoCaja, 0.008, fondoCaja]} />
+          <meshStandardMaterial color={colorCaja} roughness={0.5} />
+        </mesh>
+        {/* Costados */}
+        <mesh position={[-anchoCaja / 2 + 0.006, 0, 0]}>
+          <boxGeometry args={[0.012, altoCaja, fondoCaja]} />
+          <meshStandardMaterial color={colorCaja} roughness={0.55} />
+        </mesh>
+        <mesh position={[anchoCaja / 2 - 0.006, 0, 0]}>
+          <boxGeometry args={[0.012, altoCaja, fondoCaja]} />
+          <meshStandardMaterial color={colorCaja} roughness={0.55} />
+        </mesh>
+        {/* Trasera */}
+        <mesh position={[0, 0, -fondoCaja / 2 + 0.004]}>
+          <boxGeometry args={[anchoCaja - 0.024, altoCaja, 0.008]} />
+          <meshStandardMaterial color={colorCaja} roughness={0.55} />
+        </mesh>
+        {/* Frente interior (opcional, la mayoría no tiene) */}
+      </group>
+
+      {/* FRENTE DEL CAJÓN — saliente del módulo */}
+      <mesh position={[0, 0, md / 2 - 0.009]}>
+        <boxGeometry args={[anchoFrente, altoFrente, 0.018]} />
+        <meshStandardMaterial
+          color={colorFrente}
+          roughness={esExterno ? 0.4 : 0.35}
+          metalness={esExterno ? 0.12 : 0.06}
+        />
+        <Edges
+          color={esExterno ? "#475569" : "#332e29"}
+          lineWidth={0.6}
+        />
+      </mesh>
+
+      {/* Indicador visual de "cajón de proveedor": borde punteado */}
+      {esExterno ? (
+        <mesh position={[0, 0, md / 2 - 0.001]}>
+          <boxGeometry args={[anchoFrente * 0.95, altoFrente * 0.95, 0.0005]} />
+          <meshBasicMaterial color="#0284c7" transparent opacity={0.25} />
+        </mesh>
+      ) : null}
+
+      {/* Tirador horizontal */}
+      <mesh position={[0, altoFrente * 0.28, md / 2 + 0.005]}>
+        <boxGeometry args={[anchoFrente * 0.55, 0.014, 0.01]} />
+        <meshStandardMaterial color="#2a2a2a" metalness={0.6} roughness={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
+function Puertas({
+  modulo,
+  mw,
+  mh,
+  md,
+  color,
+}: {
+  modulo: ModuloPro;
+  mw: number;
+  mh: number;
+  md: number;
+  color: string;
+}) {
+  const frentes = modulo.subelementos.filter((s) =>
+    ["puerta_abatible", "puerta_corredera", "puerta_plegable", "tapeta_ciega", "espejo"].includes(s.tipo),
+  );
+  if (frentes.length === 0) return null;
+
+  const ordenadas = [...frentes].sort((a, b) => a.orden - b.orden);
+  const n = ordenadas.length;
+
+  return (
+    <>
+      {ordenadas.map((s, i) => {
+        const w = mw / n;
+        const xC = -mw / 2 + w * (i + 0.5);
+        const meta = SUBELEMENTOS_META[s.tipo];
+        const colPuerta = meta?.color ?? color;
+        const espejo = s.tipo === "espejo";
+        const zOffset = s.tipo === "puerta_corredera" ? (i % 2 === 0 ? 0.016 : 0.034) : 0.006;
+
+        return (
+          <group key={s.id} position={[xC, 0, md / 2 + zOffset]}>
+            <mesh>
+              <boxGeometry args={[w * 0.97, mh * 0.97, 0.018]} />
+              <meshPhysicalMaterial
+                color={colPuerta}
+                metalness={espejo ? 0.85 : 0.1}
+                roughness={espejo ? 0.1 : 0.4}
+                transparent
+                opacity={0.55}
+                transmission={0.2}
+              />
+              <Edges color="#0f0f12" lineWidth={0.6} />
+            </mesh>
+            {s.tipo === "puerta_abatible" || s.tipo === "puerta_plegable" ? (
+              <mesh position={[w * 0.35, 0, 0.012]}>
+                <boxGeometry args={[0.012, mh * 0.3, 0.014]} />
+                <meshStandardMaterial color="#27272a" metalness={0.7} roughness={0.3} />
+              </mesh>
+            ) : null}
+          </group>
+        );
+      })}
     </>
   );
 }

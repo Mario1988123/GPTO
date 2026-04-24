@@ -62,6 +62,10 @@ export type ModuloArmario = {
   tiene_led_rebaje: boolean;
   led_color_hex: string | null;
   led_intensidad_lm_m: number | null;
+  tableros_grosor_mm: number | null;
+  trasera_grosor_mm: number | null;
+  separacion_cajones_mm: number;
+  mostrar_puertas: boolean;
   notas: string | null;
   created_at: string;
   updated_at: string;
@@ -117,11 +121,16 @@ export type ModuloSubelemento = {
   orden: number;
   alto_mm: number | null;
   ancho_mm: number | null;
+  fondo_mm: number | null;
   offset_x_mm: number;
   offset_y_mm: number;
   offset_z_mm: number;
   config: Record<string, unknown>;
   etiqueta: string | null;
+  es_propio: boolean;
+  proveedor_nombre: string | null;
+  precio_override_eur: number | null;
+  ref_proveedor: string | null;
   created_at: string;
   updated_at: string;
 };

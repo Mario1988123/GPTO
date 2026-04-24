@@ -34,6 +34,29 @@ function parseConfig(fd: FormData): Record<string, unknown> {
   return config;
 }
 
+function parseOrigen(fd: FormData) {
+  const es_propio_raw = String(fd.get("es_propio") ?? "true").trim();
+  const es_propio = es_propio_raw === "true" || es_propio_raw === "on";
+  const proveedor_nombre = String(fd.get("proveedor_nombre") ?? "").trim() || null;
+  const ref_proveedor = String(fd.get("ref_proveedor") ?? "").trim() || null;
+  const precio_raw = String(fd.get("precio_override_eur") ?? "").trim();
+  const precio_override_eur = precio_raw
+    ? Number.parseFloat(precio_raw.replace(",", "."))
+    : null;
+  const fondo_raw = String(fd.get("fondo_mm") ?? "").trim();
+  const fondo_mm = fondo_raw ? Number.parseInt(fondo_raw, 10) : null;
+  return {
+    es_propio,
+    proveedor_nombre: es_propio ? null : proveedor_nombre,
+    ref_proveedor: es_propio ? null : ref_proveedor,
+    precio_override_eur:
+      !es_propio && precio_override_eur !== null && Number.isFinite(precio_override_eur)
+        ? precio_override_eur
+        : null,
+    fondo_mm: fondo_mm && Number.isFinite(fondo_mm) && fondo_mm > 0 ? fondo_mm : null,
+  };
+}
+
 export async function crearSubelemento(
   proyectoId: string,
   armarioId: string,
@@ -63,6 +86,7 @@ export async function crearSubelemento(
     offset_z_mm: parseInt0(fd, "offset_z_mm"),
     config: parseConfig(fd),
     etiqueta: String(fd.get("etiqueta") ?? "").trim() || null,
+    ...parseOrigen(fd),
   });
 
   if (error) {
@@ -89,6 +113,7 @@ export async function actualizarSubelemento(
     offset_z_mm: parseInt0(fd, "offset_z_mm"),
     etiqueta: String(fd.get("etiqueta") ?? "").trim() || null,
     config: parseConfig(fd),
+    ...parseOrigen(fd),
   };
 
   const ordenRaw = String(fd.get("orden") ?? "").trim();
@@ -185,6 +210,11 @@ export async function generarCajones(
     offset_z_mm: 0,
     config: { distribucion },
     etiqueta: `Cajón ${i + 1}`,
+    es_propio: true,
+    proveedor_nombre: null,
+    ref_proveedor: null,
+    precio_override_eur: null,
+    fondo_mm: null,
   }));
 
   const { error } = await s.from("modulo_subelementos").insert(rows);
@@ -194,6 +224,35 @@ export async function generarCajones(
 
   revalidatePath(`/app/proyectos/${proyectoId}/armarios/${armarioId}`);
   redirect(`/app/proyectos/${proyectoId}/armarios/${armarioId}?ok=creado`);
+}
+
+export async function actualizarConfiguracionModulo(
+  proyectoId: string,
+  armarioId: string,
+  moduloId: string,
+  fd: FormData,
+) {
+  const s = await createClient();
+  const parseOpt = (k: string): number | null => {
+    const v = String(fd.get(k) ?? "").trim();
+    if (!v) return null;
+    const n = Number.parseInt(v, 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+  const update: Record<string, unknown> = {
+    tableros_grosor_mm: parseOpt("tableros_grosor_mm"),
+    trasera_grosor_mm: parseOpt("trasera_grosor_mm"),
+    separacion_cajones_mm: parseOpt("separacion_cajones_mm") ?? 2,
+    mostrar_puertas:
+      fd.get("mostrar_puertas") === "on" || fd.get("mostrar_puertas") === "true",
+  };
+
+  const { error } = await s.from("modulos_armario").update(update).eq("id", moduloId);
+  if (error) {
+    redirect(`/app/proyectos/${proyectoId}/armarios/${armarioId}?error=${encodeURIComponent(error.message)}`);
+  }
+  revalidatePath(`/app/proyectos/${proyectoId}/armarios/${armarioId}`);
+  redirect(`/app/proyectos/${proyectoId}/armarios/${armarioId}?ok=actualizado`);
 }
 
 export async function actualizarLedModulo(

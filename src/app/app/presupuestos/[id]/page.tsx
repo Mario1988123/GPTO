@@ -84,8 +84,16 @@ export default async function DetallePresupuestoPage({ params }: { params: Promi
   const delPres = async () => { "use server"; await eliminarPresupuesto(id); };
   const nuevaLinea = async (fd: FormData) => { "use server"; await crearLineaCustom(id, fd); };
 
+  // Agrupar líneas por categoría para la UI
+  const lineasPorCategoria = (lineas ?? []).reduce<Record<string, PresupuestoLinea[]>>((acc, l) => {
+    const cat = l.categoria ?? "otro";
+    (acc[cat] ??= []).push(l);
+    return acc;
+  }, {});
+  const ordenCategorias = ["tableros", "cantos", "herrajes", "mano_obra", "otro"];
+
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-6 py-8">
       <Suspense>
         <ToastFromSearchParams />
       </Suspense>
@@ -163,19 +171,12 @@ export default async function DetallePresupuestoPage({ params }: { params: Promi
         }
       />
 
-      {/* Totales */}
-      <section className="mt-8 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="grid divide-y divide-border sm:grid-cols-5 sm:divide-x sm:divide-y-0">
-          <Big label="Subtotal" v={formatEur(Number(pres.subtotal_eur))} />
-          <Big label="Descuento" v={`-${formatEur(Number(pres.descuento_eur))}`} />
-          <Big label="Base imponible" v={formatEur(Number(pres.base_imponible_eur))} />
-          <Big label={`IVA ${pres.iva_pct}%`} v={formatEur(Number(pres.iva_eur))} />
-          <Big label="Total" v={formatEur(Number(pres.total_eur))} highlight />
-        </div>
-      </section>
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-6 min-w-0">
+        {/* main column */}
 
       {/* Metadatos */}
-      <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+      <section className="rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
         <div className="mb-6">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Configuración</p>
           <h2 className="mt-0.5 text-lg font-bold tracking-tight">Datos del presupuesto</h2>
@@ -252,7 +253,7 @@ export default async function DetallePresupuestoPage({ params }: { params: Promi
       </section>
 
       {/* Líneas */}
-      <section className="mt-8 rounded-2xl border border-border bg-card shadow-sm">
+      <section className="rounded-2xl border border-border bg-card shadow-sm">
         <div className="flex items-baseline justify-between border-b border-border px-6 py-4">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Detalle</p>
@@ -365,17 +366,111 @@ export default async function DetallePresupuestoPage({ params }: { params: Promi
           </form>
         ) : null}
       </section>
+        </div>
+
+        {/* Sidebar derecho: totales sticky */}
+        <aside className="space-y-4">
+          <div className="sticky top-6 space-y-4">
+            <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+              <div className="border-b border-border bg-muted/30 px-5 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Totales
+                </p>
+              </div>
+              <dl className="divide-y divide-border">
+                <SidebarRow label="Subtotal" value={formatEur(Number(pres.subtotal_eur))} />
+                {Number(pres.descuento_eur) > 0 ? (
+                  <SidebarRow
+                    label="Descuento"
+                    value={`−${formatEur(Number(pres.descuento_eur))}`}
+                    highlight="red"
+                  />
+                ) : null}
+                <SidebarRow label="Base imponible" value={formatEur(Number(pres.base_imponible_eur))} />
+                <SidebarRow
+                  label={`IVA ${pres.iva_pct}%`}
+                  value={formatEur(Number(pres.iva_eur))}
+                />
+              </dl>
+              <div className="border-t-2 border-foreground bg-gradient-to-br from-foreground to-foreground/90 px-5 py-4 text-background">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-background/70">
+                  Total
+                </p>
+                <p className="mt-1 font-mono text-3xl font-bold tracking-tight tabular-nums">
+                  {formatEur(Number(pres.total_eur))}
+                </p>
+              </div>
+            </div>
+
+            {/* Cliente resumen */}
+            {pres.proyectos?.clientes ? (
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Cliente
+                </p>
+                <p className="mt-1 font-bold text-slate-900">{pres.proyectos.clientes.nombre}</p>
+                {pres.proyectos.clientes.nif ? (
+                  <p className="font-mono text-xs text-muted-foreground">{pres.proyectos.clientes.nif}</p>
+                ) : null}
+                {pres.proyectos.clientes.email ? (
+                  <p className="mt-1 text-xs">{pres.proyectos.clientes.email}</p>
+                ) : null}
+                {pres.proyectos.clientes.telefono ? (
+                  <p className="text-xs">{pres.proyectos.clientes.telefono}</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Cantidad líneas */}
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Resumen líneas
+              </p>
+              <dl className="mt-2 space-y-1 text-xs">
+                {ordenCategorias.map((cat) => {
+                  const n = lineasPorCategoria[cat]?.length ?? 0;
+                  if (n === 0) return null;
+                  const subtotal = (lineasPorCategoria[cat] ?? []).reduce(
+                    (a, l) => a + Number(l.total_linea_eur),
+                    0,
+                  );
+                  return (
+                    <div key={cat} className="flex items-center justify-between">
+                      <dt className="text-muted-foreground">
+                        {CAT_LBL[cat]} · <span className="font-mono">{n}</span>
+                      </dt>
+                      <dd className="font-mono font-semibold">{formatEur(subtotal)}</dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </div>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }
 
-function Big({ label, v, highlight = false }: { label: string; v: string; highlight?: boolean }) {
+function SidebarRow({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: "red" | "emerald";
+}) {
+  const color =
+    highlight === "red"
+      ? "text-red-600"
+      : highlight === "emerald"
+        ? "text-emerald-600"
+        : "text-foreground";
   return (
-    <div className={`p-5 ${highlight ? "bg-gradient-to-br from-foreground to-foreground/90 text-background" : ""}`}>
-      <p className={`text-[11px] font-bold uppercase tracking-[0.14em] ${highlight ? "text-background/70" : "text-muted-foreground"}`}>
-        {label}
-      </p>
-      <p className="mt-1.5 font-mono text-xl font-bold tracking-tight tabular-nums">{v}</p>
+    <div className="flex items-center justify-between px-5 py-3 text-sm">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={`font-mono font-semibold tabular-nums ${color}`}>{value}</dd>
     </div>
   );
 }

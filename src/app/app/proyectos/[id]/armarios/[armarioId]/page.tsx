@@ -22,6 +22,7 @@ import {
   moverPosicionModulo,
   actualizarLedModulo,
   generarCajones,
+  actualizarConfiguracionModulo,
 } from "../../../subelementos-actions";
 import { cambiarEstadoPieza, regenerarPiezasArmario } from "../../../piezas-actions";
 import { actualizarDatosInstalacion } from "../../../estancias-actions";
@@ -39,6 +40,7 @@ export const dynamic = "force-dynamic";
 type ModuloVista = ModuloArmario & {
   tipos_modulo: { nombre: string; categoria: string | null } | null;
   modulo_subelementos: ModuloSubelemento[] | null;
+  referencias_tablero: { grosor_mm: number } | null;
 };
 
 const PALETA = [
@@ -66,7 +68,7 @@ export default async function ConfiguradorArmarioPage({
   const [{ data: proyecto }, { data: modulos }, { data: tipos }, { data: refs }, { data: piezasRaw }] = await Promise.all([
     s.from("proyectos").select("*").eq("id", proyectoId).maybeSingle<Proyecto>(),
     s.from("modulos_armario")
-      .select("*, tipos_modulo(nombre, categoria), modulo_subelementos(*)")
+      .select("*, tipos_modulo(nombre, categoria), modulo_subelementos(*), referencias_tablero(grosor_mm)")
       .eq("armario_id", armarioId)
       .order("orden")
       .returns<ModuloVista[]>(),
@@ -229,6 +231,11 @@ export default async function ConfiguradorArmarioPage({
               led_intensidad_lm_m: m.led_intensidad_lm_m ?? null,
               categoria: m.tipos_modulo?.categoria ?? null,
               subelementos: m.modulo_subelementos ?? [],
+              tableros_grosor_mm: (m as unknown as { tableros_grosor_mm: number | null }).tableros_grosor_mm ?? null,
+              trasera_grosor_mm: (m as unknown as { trasera_grosor_mm: number | null }).trasera_grosor_mm ?? null,
+              separacion_cajones_mm: (m as unknown as { separacion_cajones_mm: number }).separacion_cajones_mm ?? 2,
+              mostrar_puertas: (m as unknown as { mostrar_puertas: boolean }).mostrar_puertas ?? true,
+              grosor_tablero_default_mm: m.referencias_tablero?.grosor_mm ?? 16,
             }))}
             onMoverModulo={async (moduloId, x, y) => {
               "use server";
@@ -253,6 +260,10 @@ export default async function ConfiguradorArmarioPage({
             onGenerarCajones={async (moduloId, dist, n, alturas) => {
               "use server";
               await generarCajones(proyectoId, armarioId, moduloId, dist, n, alturas);
+            }}
+            onActualizarConfigModulo={async (moduloId, fd) => {
+              "use server";
+              await actualizarConfiguracionModulo(proyectoId, armarioId, moduloId, fd);
             }}
           />
         )}
@@ -288,6 +299,11 @@ export default async function ConfiguradorArmarioPage({
             led_intensidad_lm_m: m.led_intensidad_lm_m ?? null,
             categoria: m.tipos_modulo?.categoria ?? null,
             subelementos: m.modulo_subelementos ?? [],
+            tableros_grosor_mm: (m as unknown as { tableros_grosor_mm: number | null }).tableros_grosor_mm ?? null,
+            trasera_grosor_mm: (m as unknown as { trasera_grosor_mm: number | null }).trasera_grosor_mm ?? null,
+            separacion_cajones_mm: (m as unknown as { separacion_cajones_mm: number }).separacion_cajones_mm ?? 2,
+            mostrar_puertas: (m as unknown as { mostrar_puertas: boolean }).mostrar_puertas ?? true,
+            grosor_tablero_default_mm: m.referencias_tablero?.grosor_mm ?? 16,
           }))}
         />
       </section>

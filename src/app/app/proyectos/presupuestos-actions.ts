@@ -164,6 +164,39 @@ async function calcularLineas(proyectoId: string): Promise<LineaNueva[]> {
     }
   }
 
+  // ---------- 3.c SUBELEMENTOS DE PROVEEDOR (cajones comprados) ----------
+  const { data: subsExternos } = await s
+    .from("modulo_subelementos")
+    .select(
+      "tipo, etiqueta, proveedor_nombre, ref_proveedor, precio_override_eur, modulos_armario!inner(armarios!inner(proyecto_id))",
+    )
+    .eq("es_propio", false)
+    .eq("modulos_armario.armarios.proyecto_id", proyectoId);
+
+  type SubExt = {
+    tipo: string;
+    etiqueta: string | null;
+    proveedor_nombre: string | null;
+    ref_proveedor: string | null;
+    precio_override_eur: number | null;
+  };
+  for (const se of (subsExternos ?? []) as unknown as SubExt[]) {
+    const precio = Number(se.precio_override_eur ?? 0);
+    if (precio <= 0) continue;
+    const etiqueta = se.etiqueta ?? se.tipo;
+    const descripcion = se.proveedor_nombre
+      ? `${etiqueta} · ${se.proveedor_nombre}${se.ref_proveedor ? ` (${se.ref_proveedor})` : ""}`
+      : etiqueta;
+    lineas.push({
+      orden: orden++,
+      categoria: "otro",
+      descripcion,
+      cantidad: 1,
+      unidad: "ud",
+      precio_unitario_eur: precio,
+    });
+  }
+
   // ---------- 4. MANO DE OBRA ----------
   const { data: modsMO } = await s
     .from("modulos_armario")
