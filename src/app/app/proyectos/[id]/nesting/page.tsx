@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { cambiarEstadoRecorte, ejecutarNesting, moverPiezaEnTablero } from "../../nesting-actions";
+import { regenerarPiezasProyectoYRedirect } from "../../piezas-actions";
 import { ToastFromSearchParams } from "../../../catalogo/shared";
 import { ESTADOS_RECORTE, type EstadoRecorte } from "@/lib/tipos/nesting";
 import type { Proyecto } from "@/lib/tipos/proyectos";
@@ -108,6 +109,12 @@ export default async function NestingPage({ params }: { params: Promise<{ id: st
   const otras = piezasNoColocadas.filter((p) => !tooBig.includes(p) && !sinReferencia.includes(p));
 
   const run = async () => { "use server"; await ejecutarNesting(id); };
+  const explosionar = async () => {
+    "use server";
+    await regenerarPiezasProyectoYRedirect(id, `/app/proyectos/${id}/nesting`);
+  };
+
+  const totalPiezasProyecto = (todasPiezas ?? []).length;
 
   const t = (tableros ?? []) as unknown as TableroView[];
   const r = (recortes ?? []) as unknown as RecorteView[];
@@ -131,18 +138,42 @@ export default async function NestingPage({ params }: { params: Promise<{ id: st
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">Nesting</h1>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
             {totalTableros === 0 ? (
-              <>Sin plano de corte. Pulsa <strong>Ejecutar nesting</strong> para calcularlo.</>
+              <>Sin plano de corte · {totalPiezasProyecto} pieza(s) en el proyecto</>
             ) : (
               <>{totalTableros} tablero(s) · {totalPiezas} pieza(s) colocadas · {totalRecortes} recorte(s){pendientes > 0 ? ` (${pendientes} por validar)` : ""}</>
             )}
           </p>
         </div>
-        <form action={run}>
-          <button type="submit" className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
-            {totalTableros === 0 ? "Ejecutar nesting" : "Recalcular"}
-          </button>
-        </form>
+        <div className="flex items-center gap-2">
+          <form action={explosionar}>
+            <button type="submit" className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium dark:border-zinc-700 dark:bg-zinc-950">
+              {totalPiezasProyecto === 0 ? "Explosionar piezas" : "Regenerar piezas"}
+            </button>
+          </form>
+          <form action={run}>
+            <button type="submit" className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white dark:bg-zinc-100 dark:text-zinc-900">
+              {totalTableros === 0 ? "Ejecutar nesting" : "Recalcular"}
+            </button>
+          </form>
+        </div>
       </div>
+
+      {totalPiezasProyecto === 0 ? (
+        <section className="mt-6 rounded-xl border border-blue-300 bg-blue-50 p-5 dark:border-blue-900 dark:bg-blue-950/40">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 text-blue-600 dark:text-blue-400">ℹ️</span>
+            <div className="flex-1">
+              <h2 className="text-base font-semibold text-blue-900 dark:text-blue-200">
+                Aún no se han explosionado las piezas del proyecto
+              </h2>
+              <p className="mt-1 text-sm text-blue-800 dark:text-blue-300">
+                Pulsa <strong>Ejecutar nesting</strong> arriba: se explosionarán automáticamente antes del cálculo.
+                También puedes hacerlo de forma manual con <strong>Explosionar piezas</strong>.
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* Alerta de piezas no colocadas */}
       {totalTableros > 0 && piezasNoColocadas.length > 0 ? (

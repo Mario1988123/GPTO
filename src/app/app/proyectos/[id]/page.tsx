@@ -103,6 +103,16 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
             <Badge className={`${ESTADO_VARIANT[proyecto.estado] ?? ""} border-0`}>
               {LBL[proyecto.estado]?.label}
             </Badge>
+            <form action={async () => {
+              "use server";
+              const { regenerarPiezasProyectoYRedirect } = await import("../piezas-actions");
+              await regenerarPiezasProyectoYRedirect(id, `/app/proyectos/${id}`);
+            }}>
+              <Button type="submit" variant="outline" size="sm">
+                <Boxes className="h-3.5 w-3.5" />
+                Explosionar piezas
+              </Button>
+            </form>
             <form action={async () => { "use server"; const { crearBorrador } = await import("../presupuestos-actions"); await crearBorrador(id); }}>
               <Button type="submit" variant="outline" size="sm">
                 <Receipt className="h-3.5 w-3.5" />

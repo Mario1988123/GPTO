@@ -107,7 +107,7 @@ export default async function DetallePresupuestoPage({ params }: { params: Promi
 
       <PageHeader
         eyebrow="Presupuesto"
-        title={pres.numero ?? "Borrador"}
+        title={pres.numero ?? pres.numero_borrador ?? "Sin número"}
         description={
           pres.proyectos?.clientes?.nombre
             ? `${pres.proyectos.clientes.nombre}${pres.fecha_emision ? ` · Emitido el ${new Date(pres.fecha_emision).toLocaleDateString("es-ES")}` : ""}`

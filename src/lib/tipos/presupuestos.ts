@@ -30,6 +30,7 @@ export type Presupuesto = {
   empresa_id: string;
   proyecto_id: string;
   numero: string | null;
+  numero_borrador: string | null;
   fecha_emision: string | null;
   validez_dias: number;
   modo_presentacion: ModoPresentacion;

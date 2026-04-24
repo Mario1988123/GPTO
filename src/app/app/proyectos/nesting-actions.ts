@@ -30,7 +30,7 @@ export async function ejecutarNesting(proyectoId: string) {
   const kerf = Number(cfg.kerf_mm ?? 3);
 
   // 2. Todas las piezas del proyecto (via modulo -> armario -> proyecto).
-  const { data: piezas, error } = await s
+  let { data: piezas, error } = await s
     .from("piezas_modulo")
     .select("id, cantidad, largo_mm, ancho_mm, grosor_mm, respeta_veta, referencia_tablero_id, modulos_armario!inner(armario_id, armarios!inner(proyecto_id))")
     .eq("modulos_armario.armarios.proyecto_id", proyectoId);
@@ -38,8 +38,26 @@ export async function ejecutarNesting(proyectoId: string) {
     redirect(`/app/proyectos/${proyectoId}/nesting?error=${encodeURIComponent(error.message)}`);
   }
 
+  // Si no hay piezas, auto-explosionamos antes de fallar (mejor UX)
   if (!piezas || piezas.length === 0) {
-    redirect(`/app/proyectos/${proyectoId}/nesting?error=${encodeURIComponent("No hay piezas. Explosiona primero desde cada armario.")}`);
+    try {
+      const { regenerarPiezasProyecto } = await import("./piezas-actions");
+      await regenerarPiezasProyecto(proyectoId);
+    } catch (e) {
+      redirect(`/app/proyectos/${proyectoId}/nesting?error=${encodeURIComponent(
+        e instanceof Error
+          ? `No hay piezas y falló la explosión automática: ${e.message}`
+          : "No hay piezas ni módulos configurados",
+      )}`);
+    }
+    const retry = await s
+      .from("piezas_modulo")
+      .select("id, cantidad, largo_mm, ancho_mm, grosor_mm, respeta_veta, referencia_tablero_id, modulos_armario!inner(armario_id, armarios!inner(proyecto_id))")
+      .eq("modulos_armario.armarios.proyecto_id", proyectoId);
+    piezas = retry.data;
+    if (!piezas || piezas.length === 0) {
+      redirect(`/app/proyectos/${proyectoId}/nesting?error=${encodeURIComponent("Sin piezas tras auto-explosión. Comprueba que los armarios tienen módulos con tipos de módulo que definan piezas.")}`);
+    }
   }
 
   // 3. Borrar resultados previos del proyecto.

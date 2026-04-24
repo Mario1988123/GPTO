@@ -32,6 +32,7 @@ const ESTADO_VARIANT: Record<string, string> = {
 type Fila = {
   id: string;
   numero: string | null;
+  numero_borrador: string | null;
   fecha_emision: string | null;
   estado: EstadoPresupuesto;
   total_eur: number;
@@ -44,7 +45,7 @@ export default async function PresupuestosPage({ searchParams }: { searchParams:
   const s = await createClient();
   let q = s
     .from("presupuestos")
-    .select("id, numero, fecha_emision, estado, total_eur, created_at, proyectos(nombre, clientes(nombre))")
+    .select("id, numero, numero_borrador, fecha_emision, estado, total_eur, created_at, proyectos(nombre, clientes(nombre))")
     .order("created_at", { ascending: false });
   if (estado) q = q.eq("estado", estado);
   const { data } = await q.returns<Fila[]>();
@@ -115,7 +116,7 @@ export default async function PresupuestosPage({ searchParams }: { searchParams:
                       href={`/app/presupuestos/${p.id}`}
                       className="font-mono text-xs font-bold"
                     >
-                      {p.numero ?? "(borrador)"}
+                      {p.numero ?? p.numero_borrador ?? "—"}
                     </Link>
                   </TableCell>
                   <TableCell className="font-medium">

@@ -38,7 +38,7 @@ export default async function AppHomePage() {
     supabase.from("pedidos").select("*", { count: "exact", head: true }).in("estado", ["pendiente", "en_fabricacion", "fabricado"]),
     supabase.from("pedidos").select("importe_eur").in("estado", ["fabricado", "entregado"]),
     supabase.from("proyectos").select("id, nombre, estado, updated_at, clientes(nombre)").order("updated_at", { ascending: false }).limit(5),
-    supabase.from("presupuestos").select("id, numero, estado, total_eur, updated_at, proyectos(nombre)").order("updated_at", { ascending: false }).limit(5),
+    supabase.from("presupuestos").select("id, numero, numero_borrador, estado, total_eur, updated_at, proyectos(nombre)").order("updated_at", { ascending: false }).limit(5),
   ]);
 
   type PedRow = { importe_eur: number };
@@ -146,12 +146,12 @@ export default async function AppHomePage() {
             />
           ) : (
             <ul className="divide-y divide-border">
-              {((ultimosPresupuestos.data ?? []) as unknown as { id: string; numero: string | null; estado: string; total_eur: number; proyectos: { nombre: string } | null }[]).map((p) => (
+              {((ultimosPresupuestos.data ?? []) as unknown as { id: string; numero: string | null; numero_borrador: string | null; estado: string; total_eur: number; proyectos: { nombre: string } | null }[]).map((p) => (
                 <li key={p.id}>
                   <Link href={`/app/presupuestos/${p.id}`} className="group flex items-center justify-between gap-3 px-5 py-3.5 text-sm transition hover:bg-muted/50">
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-mono text-xs font-bold">
-                        {p.numero ?? "(borrador)"}
+                        {p.numero ?? p.numero_borrador ?? "—"}
                       </p>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
                         {p.proyectos?.nombre ?? "—"}

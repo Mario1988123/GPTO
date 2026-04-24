@@ -214,10 +214,29 @@ function calcularTotales(
 
 export async function crearBorrador(proyectoId: string) {
   const s = await createClient();
-  // Crear presupuesto vacío en borrador
+
+  // Auto-explosionar piezas si no existen para este proyecto
+  const { count: piezasExistentes } = await s
+    .from("piezas_modulo")
+    .select("id, modulos_armario!inner(armarios!inner(proyecto_id))", { count: "exact", head: true })
+    .eq("modulos_armario.armarios.proyecto_id", proyectoId);
+
+  if ((piezasExistentes ?? 0) === 0) {
+    const { regenerarPiezasProyecto } = await import("./piezas-actions");
+    try {
+      await regenerarPiezasProyecto(proyectoId);
+    } catch {
+      // Si no hay armarios/módulos, seguimos sin piezas — las líneas de tableros/cantos saldrán vacías.
+    }
+  }
+
+  // Número BORR-YYYY-NNNN para identificar el borrador desde el minuto 0
+  const { data: numBorr } = await s.rpc("get_next_sequence", { p_tipo: "BORR" });
+
+  // Crear presupuesto en borrador con número de borrador
   const { data: ins, error } = await s
     .from("presupuestos")
-    .insert({ proyecto_id: proyectoId })
+    .insert({ proyecto_id: proyectoId, numero_borrador: numBorr ?? null })
     .select("id")
     .single();
   if (error) redirect(`/app/proyectos/${proyectoId}?error=${encodeURIComponent(error.message)}`);
