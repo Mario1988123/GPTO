@@ -13,20 +13,24 @@ function payload(fd: FormData) {
   const tipo = String(fd.get("tipo") ?? "otro") as TipoEstancia;
   if (!TIPOS.includes(tipo)) throw new Error("Tipo inválido.");
 
+  // Nota: largo_mm, ancho_mm, alto_mm ya no se editan en este formulario.
+  // Se sincronizan desde estancia_geometria cuando el usuario guarda el plano.
   const parseOpt = (k: string): number | null => {
     const v = String(fd.get(k) ?? "").trim();
     if (!v) return null;
     const n = Number.parseInt(v, 10);
     return Number.isFinite(n) && n > 0 ? n : null;
   };
-  return {
+  const payload: Record<string, unknown> = {
     nombre,
     tipo,
-    largo_mm: parseOpt("largo_mm"),
-    ancho_mm: parseOpt("ancho_mm"),
-    alto_mm: parseOpt("alto_mm"),
     notas: String(fd.get("notas") ?? "").trim() || null,
   };
+  // Mantenemos retrocompatibilidad: si vienen valores explícitos los aceptamos
+  if (fd.has("largo_mm")) payload.largo_mm = parseOpt("largo_mm");
+  if (fd.has("ancho_mm")) payload.ancho_mm = parseOpt("ancho_mm");
+  if (fd.has("alto_mm")) payload.alto_mm = parseOpt("alto_mm");
+  return payload;
 }
 
 export async function crearEstancia(proyectoId: string, fd: FormData) {

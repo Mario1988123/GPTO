@@ -53,6 +53,7 @@ export async function guardarGeometriaPoligono(
   estanciaId: string,
   puntos: Punto[],
   alto_pared_mm: number,
+  tipo: "rectangular" | "poligono" = "poligono",
 ) {
   const s = await createClient();
   if (!Array.isArray(puntos) || puntos.length < 3) throw new Error("Polígono necesita al menos 3 puntos");
@@ -61,13 +62,28 @@ export async function guardarGeometriaPoligono(
   const { error } = await s.from("estancia_geometria").upsert(
     {
       estancia_id: estanciaId,
-      tipo: "poligono",
+      tipo,
       puntos,
       alto_pared_mm,
     },
     { onConflict: "estancia_id" },
   );
   if (error) throw new Error(error.message);
+
+  // Sincronizar campos legacy de la estancia (bounding box) para compat con /plano-2d y portal cliente
+  const xs = puntos.map((p) => p.x);
+  const ys = puntos.map((p) => p.y);
+  const largo = Math.max(...xs) - Math.min(...xs);
+  const ancho = Math.max(...ys) - Math.min(...ys);
+  await s
+    .from("estancias")
+    .update({
+      largo_mm: largo > 0 ? largo : null,
+      ancho_mm: ancho > 0 ? ancho : null,
+      alto_mm: alto_pared_mm,
+    })
+    .eq("id", estanciaId);
+
   revalidatePath(`/app/proyectos/${proyectoId}/estancias/${estanciaId}`);
 }
 

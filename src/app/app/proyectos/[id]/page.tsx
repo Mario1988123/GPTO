@@ -11,6 +11,7 @@ import {
   Home,
   Plus,
   Boxes,
+  Calendar,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -103,6 +104,13 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
             <Badge className={`${ESTADO_VARIANT[proyecto.estado] ?? ""} border-0`}>
               {LBL[proyecto.estado]?.label}
             </Badge>
+            <Link
+              href={`/app/proyectos/${id}/agenda`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              Agenda
+            </Link>
             <form action={async () => {
               "use server";
               const { regenerarPiezasProyectoYRedirect } = await import("../piezas-actions");

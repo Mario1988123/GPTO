@@ -104,7 +104,7 @@ export default async function DetalleEstanciaPage({
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Ficha</p>
           <h2 className="mt-0.5 text-lg font-bold tracking-tight">Datos básicos</h2>
         </div>
-        <form action={updEst} className="grid gap-3 sm:grid-cols-5">
+        <form action={updEst} className="grid gap-3 sm:grid-cols-4">
           <div className="sm:col-span-2 space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground">Nombre *</label>
             <input name="nombre" required defaultValue={estancia.nombre} className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-xs" />
@@ -119,14 +119,14 @@ export default async function DetalleEstanciaPage({
               ))}
             </select>
           </div>
-          <NumIn name="largo_mm" label="Largo (mm)" defaultValue={estancia.largo_mm ?? undefined} />
-          <NumIn name="ancho_mm" label="Ancho (mm)" defaultValue={estancia.ancho_mm ?? undefined} />
-          <NumIn name="alto_mm" label="Alto (mm)" defaultValue={estancia.alto_mm ?? undefined} />
-          <div className="sm:col-span-3 space-y-1.5">
+          <div className="sm:col-span-4 space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground">Notas</label>
             <textarea name="notas" rows={2} defaultValue={estancia.notas ?? ""} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs" />
           </div>
-          <div className="sm:col-span-5 flex items-center gap-3 border-t border-border pt-4">
+          <p className="sm:col-span-4 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-400">
+            Las dimensiones de la estancia (largo, ancho, alto) se configuran en el <strong>plano</strong> de abajo. Son la única fuente de verdad.
+          </p>
+          <div className="sm:col-span-4 flex items-center gap-3 border-t border-border pt-4">
             <Button type="submit">Guardar</Button>
             <form action={delEst} className="inline">
               <Button type="submit" variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/5">

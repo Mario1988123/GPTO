@@ -23,7 +23,36 @@ import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
 
-export default async function AppHomePage() {
+const MESES_ES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+export default async function AppHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ anio?: string; mes?: string }>;
+}) {
+  const { anio: anioParam, mes: mesParam } = await searchParams;
+
+  const hoy = new Date();
+  const anioActual = hoy.getFullYear();
+  const anio = Number(anioParam ?? String(anioActual));
+  const mes = mesParam === "todos" ? "todos" : Number(mesParam ?? String(hoy.getMonth() + 1));
+
+  const { rangoInicio, rangoFin, rangoLabel } =
+    mes === "todos"
+      ? {
+          rangoInicio: new Date(anio, 0, 1).toISOString().slice(0, 10),
+          rangoFin: new Date(anio + 1, 0, 1).toISOString().slice(0, 10),
+          rangoLabel: `Año ${anio}`,
+        }
+      : {
+          rangoInicio: new Date(anio, (mes as number) - 1, 1).toISOString().slice(0, 10),
+          rangoFin: new Date(anio, mes as number, 1).toISOString().slice(0, 10),
+          rangoLabel: `${MESES_ES[(mes as number) - 1]} ${anio}`,
+        };
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { data: usuario } = await supabase
@@ -32,31 +61,59 @@ export default async function AppHomePage() {
     .eq("id", user!.id)
     .maybeSingle();
 
-  const [clientesAct, proyectosAct, presupuestosPend, pedidosEnFab, totalFacturado, ultimosProyectos, ultimosPresupuestos] = await Promise.all([
+  const [clientesAct, proyectosAct, presupuestosPend, pedidosEnFab, facturadoRango, ultimosProyectos, ultimosPresupuestos] = await Promise.all([
     supabase.from("clientes").select("*", { count: "exact", head: true }).eq("activo", true),
     supabase.from("proyectos").select("*", { count: "exact", head: true }).in("estado", ["borrador", "presupuestado", "confirmado", "en_fabricacion"]),
     supabase.from("presupuestos").select("*", { count: "exact", head: true }).in("estado", ["borrador", "enviado"]),
     supabase.from("pedidos").select("*", { count: "exact", head: true }).in("estado", ["pendiente", "en_fabricacion", "fabricado"]),
-    supabase.from("pedidos").select("importe_eur").in("estado", ["fabricado", "entregado"]),
+    // Pedidos facturados dentro del rango seleccionado
+    supabase
+      .from("pedidos")
+      .select("importe_eur, fecha_pedido")
+      .in("estado", ["fabricado", "entregado"])
+      .gte("fecha_pedido", rangoInicio)
+      .lt("fecha_pedido", rangoFin),
     supabase.from("proyectos").select("id, nombre, estado, updated_at, clientes(nombre)").order("updated_at", { ascending: false }).limit(5),
     supabase.from("presupuestos").select("id, numero, numero_borrador, estado, total_eur, updated_at, proyectos(nombre)").order("updated_at", { ascending: false }).limit(5),
   ]);
 
   type PedRow = { importe_eur: number };
-  const facturadoTotal = ((totalFacturado.data ?? []) as PedRow[]).reduce((a, p) => a + Number(p.importe_eur), 0);
+  const facturadoTotal = ((facturadoRango.data ?? []) as PedRow[]).reduce((a, p) => a + Number(p.importe_eur), 0);
 
   const primerNombre = usuario?.nombre?.split(" ")[0] ?? "admin";
 
+  // Años disponibles: últimos 5 + el actual + 2 futuros
+  const anios = Array.from({ length: 8 }, (_, i) => anioActual - 5 + i);
+
   return (
     <div className="mx-auto max-w-7xl p-6 md:p-8 space-y-8">
-      {/* Bienvenida */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-          Hola, {primerNombre} 👋
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Resumen del estado del taller · {new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-        </p>
+      {/* Bienvenida + filtros */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            Hola, {primerNombre} 👋
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Resumen del estado del taller · {new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          </p>
+        </div>
+        {/* Filtros año/mes */}
+        <form className="flex items-end gap-2">
+          <div className="space-y-1">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Año</label>
+            <select name="anio" defaultValue={String(anio)} className="flex h-9 w-24 rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-sm">
+              {anios.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-slate-500">Mes</label>
+            <select name="mes" defaultValue={String(mes)} className="flex h-9 w-36 rounded-lg border border-slate-200 bg-white px-3 text-sm shadow-sm">
+              <option value="todos">Todo el año</option>
+              {MESES_ES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+            </select>
+          </div>
+          <Button type="submit" size="sm" variant="outline">Filtrar</Button>
+        </form>
       </div>
 
       {/* Stats Cards */}
@@ -73,13 +130,13 @@ export default async function AppHomePage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                Facturación histórica
+                Facturación · {rangoLabel}
               </p>
               <p className="mt-2 font-mono text-4xl font-bold tracking-tight sm:text-5xl">
                 {formatEur(facturadoTotal)}
               </p>
               <p className="mt-2 text-sm text-slate-300">
-                Pedidos fabricados y entregados
+                Pedidos fabricados y entregados en el periodo seleccionado
               </p>
             </div>
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 shadow-lg shadow-blue-500/25">
