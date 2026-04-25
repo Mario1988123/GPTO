@@ -136,17 +136,44 @@ ALTER TABLE public.aislantes_catalogo    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.rodapies_catalogo     ENABLE ROW LEVEL SECURITY;
 
 -- Políticas idénticas para las 4 tablas: solo ven lo suyo por empresa_id.
-DO $$
-DECLARE t TEXT;
-BEGIN
-  FOR t IN SELECT unnest(ARRAY['puertas_paso_catalogo','suelos_catalogo','aislantes_catalogo','rodapies_catalogo']) LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I_select ON public.%I', t, t);
-    EXECUTE format('DROP POLICY IF EXISTS %I_insert ON public.%I', t, t);
-    EXECUTE format('DROP POLICY IF EXISTS %I_update ON public.%I', t, t);
-    EXECUTE format('DROP POLICY IF EXISTS %I_delete ON public.%I', t, t);
-    EXECUTE format('CREATE POLICY %I_select ON public.%I FOR SELECT TO authenticated USING (empresa_id = public.current_empresa_id())', t, t);
-    EXECUTE format('CREATE POLICY %I_insert ON public.%I FOR INSERT TO authenticated WITH CHECK (empresa_id = public.current_empresa_id())', t, t);
-    EXECUTE format('CREATE POLICY %I_update ON public.%I FOR UPDATE TO authenticated USING (empresa_id = public.current_empresa_id()) WITH CHECK (empresa_id = public.current_empresa_id())', t, t);
-    EXECUTE format('CREATE POLICY %I_delete ON public.%I FOR DELETE TO authenticated USING (empresa_id = public.current_empresa_id())', t, t);
-  END LOOP;
-END $$;
+-- Sin DO $$ ... $$ para que el SQL Editor de Supabase no parta el dollar-quote.
+
+-- puertas_paso_catalogo
+DROP POLICY IF EXISTS puertas_paso_catalogo_select ON public.puertas_paso_catalogo;
+DROP POLICY IF EXISTS puertas_paso_catalogo_insert ON public.puertas_paso_catalogo;
+DROP POLICY IF EXISTS puertas_paso_catalogo_update ON public.puertas_paso_catalogo;
+DROP POLICY IF EXISTS puertas_paso_catalogo_delete ON public.puertas_paso_catalogo;
+CREATE POLICY puertas_paso_catalogo_select ON public.puertas_paso_catalogo FOR SELECT TO authenticated USING (empresa_id = public.current_empresa_id());
+CREATE POLICY puertas_paso_catalogo_insert ON public.puertas_paso_catalogo FOR INSERT TO authenticated WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY puertas_paso_catalogo_update ON public.puertas_paso_catalogo FOR UPDATE TO authenticated USING (empresa_id = public.current_empresa_id()) WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY puertas_paso_catalogo_delete ON public.puertas_paso_catalogo FOR DELETE TO authenticated USING (empresa_id = public.current_empresa_id());
+
+-- suelos_catalogo
+DROP POLICY IF EXISTS suelos_catalogo_select ON public.suelos_catalogo;
+DROP POLICY IF EXISTS suelos_catalogo_insert ON public.suelos_catalogo;
+DROP POLICY IF EXISTS suelos_catalogo_update ON public.suelos_catalogo;
+DROP POLICY IF EXISTS suelos_catalogo_delete ON public.suelos_catalogo;
+CREATE POLICY suelos_catalogo_select ON public.suelos_catalogo FOR SELECT TO authenticated USING (empresa_id = public.current_empresa_id());
+CREATE POLICY suelos_catalogo_insert ON public.suelos_catalogo FOR INSERT TO authenticated WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY suelos_catalogo_update ON public.suelos_catalogo FOR UPDATE TO authenticated USING (empresa_id = public.current_empresa_id()) WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY suelos_catalogo_delete ON public.suelos_catalogo FOR DELETE TO authenticated USING (empresa_id = public.current_empresa_id());
+
+-- aislantes_catalogo
+DROP POLICY IF EXISTS aislantes_catalogo_select ON public.aislantes_catalogo;
+DROP POLICY IF EXISTS aislantes_catalogo_insert ON public.aislantes_catalogo;
+DROP POLICY IF EXISTS aislantes_catalogo_update ON public.aislantes_catalogo;
+DROP POLICY IF EXISTS aislantes_catalogo_delete ON public.aislantes_catalogo;
+CREATE POLICY aislantes_catalogo_select ON public.aislantes_catalogo FOR SELECT TO authenticated USING (empresa_id = public.current_empresa_id());
+CREATE POLICY aislantes_catalogo_insert ON public.aislantes_catalogo FOR INSERT TO authenticated WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY aislantes_catalogo_update ON public.aislantes_catalogo FOR UPDATE TO authenticated USING (empresa_id = public.current_empresa_id()) WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY aislantes_catalogo_delete ON public.aislantes_catalogo FOR DELETE TO authenticated USING (empresa_id = public.current_empresa_id());
+
+-- rodapies_catalogo
+DROP POLICY IF EXISTS rodapies_catalogo_select ON public.rodapies_catalogo;
+DROP POLICY IF EXISTS rodapies_catalogo_insert ON public.rodapies_catalogo;
+DROP POLICY IF EXISTS rodapies_catalogo_update ON public.rodapies_catalogo;
+DROP POLICY IF EXISTS rodapies_catalogo_delete ON public.rodapies_catalogo;
+CREATE POLICY rodapies_catalogo_select ON public.rodapies_catalogo FOR SELECT TO authenticated USING (empresa_id = public.current_empresa_id());
+CREATE POLICY rodapies_catalogo_insert ON public.rodapies_catalogo FOR INSERT TO authenticated WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY rodapies_catalogo_update ON public.rodapies_catalogo FOR UPDATE TO authenticated USING (empresa_id = public.current_empresa_id()) WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY rodapies_catalogo_delete ON public.rodapies_catalogo FOR DELETE TO authenticated USING (empresa_id = public.current_empresa_id());

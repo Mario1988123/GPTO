@@ -165,20 +165,35 @@ ALTER TABLE public.series_facturacion ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.facturas           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.factura_lineas     ENABLE ROW LEVEL SECURITY;
 
-DO $$
-DECLARE t TEXT;
-BEGIN
-  FOR t IN SELECT unnest(ARRAY['series_facturacion','facturas','factura_lineas']) LOOP
-    EXECUTE format('DROP POLICY IF EXISTS %I_select ON public.%I', t, t);
-    EXECUTE format('DROP POLICY IF EXISTS %I_insert ON public.%I', t, t);
-    EXECUTE format('DROP POLICY IF EXISTS %I_update ON public.%I', t, t);
-    EXECUTE format('DROP POLICY IF EXISTS %I_delete ON public.%I', t, t);
-    EXECUTE format('CREATE POLICY %I_select ON public.%I FOR SELECT TO authenticated USING (empresa_id = public.current_empresa_id())', t, t);
-    EXECUTE format('CREATE POLICY %I_insert ON public.%I FOR INSERT TO authenticated WITH CHECK (empresa_id = public.current_empresa_id())', t, t);
-    EXECUTE format('CREATE POLICY %I_update ON public.%I FOR UPDATE TO authenticated USING (empresa_id = public.current_empresa_id()) WITH CHECK (empresa_id = public.current_empresa_id())', t, t);
-    EXECUTE format('CREATE POLICY %I_delete ON public.%I FOR DELETE TO authenticated USING (empresa_id = public.current_empresa_id())', t, t);
-  END LOOP;
-END $$;
+-- series_facturacion
+DROP POLICY IF EXISTS series_facturacion_select ON public.series_facturacion;
+DROP POLICY IF EXISTS series_facturacion_insert ON public.series_facturacion;
+DROP POLICY IF EXISTS series_facturacion_update ON public.series_facturacion;
+DROP POLICY IF EXISTS series_facturacion_delete ON public.series_facturacion;
+CREATE POLICY series_facturacion_select ON public.series_facturacion FOR SELECT TO authenticated USING (empresa_id = public.current_empresa_id());
+CREATE POLICY series_facturacion_insert ON public.series_facturacion FOR INSERT TO authenticated WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY series_facturacion_update ON public.series_facturacion FOR UPDATE TO authenticated USING (empresa_id = public.current_empresa_id()) WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY series_facturacion_delete ON public.series_facturacion FOR DELETE TO authenticated USING (empresa_id = public.current_empresa_id());
+
+-- facturas
+DROP POLICY IF EXISTS facturas_select ON public.facturas;
+DROP POLICY IF EXISTS facturas_insert ON public.facturas;
+DROP POLICY IF EXISTS facturas_update ON public.facturas;
+DROP POLICY IF EXISTS facturas_delete ON public.facturas;
+CREATE POLICY facturas_select ON public.facturas FOR SELECT TO authenticated USING (empresa_id = public.current_empresa_id());
+CREATE POLICY facturas_insert ON public.facturas FOR INSERT TO authenticated WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY facturas_update ON public.facturas FOR UPDATE TO authenticated USING (empresa_id = public.current_empresa_id()) WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY facturas_delete ON public.facturas FOR DELETE TO authenticated USING (empresa_id = public.current_empresa_id());
+
+-- factura_lineas
+DROP POLICY IF EXISTS factura_lineas_select ON public.factura_lineas;
+DROP POLICY IF EXISTS factura_lineas_insert ON public.factura_lineas;
+DROP POLICY IF EXISTS factura_lineas_update ON public.factura_lineas;
+DROP POLICY IF EXISTS factura_lineas_delete ON public.factura_lineas;
+CREATE POLICY factura_lineas_select ON public.factura_lineas FOR SELECT TO authenticated USING (empresa_id = public.current_empresa_id());
+CREATE POLICY factura_lineas_insert ON public.factura_lineas FOR INSERT TO authenticated WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY factura_lineas_update ON public.factura_lineas FOR UPDATE TO authenticated USING (empresa_id = public.current_empresa_id()) WITH CHECK (empresa_id = public.current_empresa_id());
+CREATE POLICY factura_lineas_delete ON public.factura_lineas FOR DELETE TO authenticated USING (empresa_id = public.current_empresa_id());
 
 -- ================== INMUTABILIDAD ==================
 -- Una factura emitida no puede borrarse ni cambiar campos críticos.
