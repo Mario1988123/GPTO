@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Users, Plus, Search, Mail, Pencil, Trash2, Power, FolderPlus, Building2, User } from "lucide-react";
+import { Users, Plus, Search, Mail, Pencil, Trash2, Power, FolderPlus, Building2, User, FileUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ToastFromSearchParams } from "./toasts";
 import { alternarActivo, eliminarCliente } from "./actions";
@@ -71,10 +71,16 @@ export default async function ClientesPage({
         title="Clientes"
         description={`${clientes?.length ?? 0} cliente${(clientes?.length ?? 0) === 1 ? "" : "s"}${ver !== "todos" ? ` · ${ver}` : ""}`}
         actions={
-          <Link href="/app/clientes/nuevo" className={buttonVariants()}>
-            <Plus className="h-4 w-4" />
-            Nuevo cliente
-          </Link>
+          <>
+            <Link href="/app/clientes/importar" className={buttonVariants({ variant: "outline" })}>
+              <FileUp className="h-4 w-4" />
+              Importar CSV
+            </Link>
+            <Link href="/app/clientes/nuevo" className={buttonVariants()}>
+              <Plus className="h-4 w-4" />
+              Nuevo cliente
+            </Link>
+          </>
         }
       />
 

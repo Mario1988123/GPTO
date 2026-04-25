@@ -12,8 +12,8 @@ export const dynamic = "force-dynamic";
 export default async function NuevaReferenciaTableroPage() {
   const s = await createClient();
   const [{ data: materiales }, { data: acabados }, { data: proveedores }] = await Promise.all([
-    s.from("materiales").select("id, nombre, categoria").eq("activo", true).order("nombre"),
-    s.from("acabados").select("id, nombre").eq("activo", true).order("nombre"),
+    s.from("materiales").select("id, nombre, categoria, foto_url").eq("activo", true).order("nombre"),
+    s.from("acabados").select("id, nombre, color_hex, foto_url").eq("activo", true).order("nombre"),
     s.from("proveedores").select("id, nombre").eq("activo", true).order("nombre"),
   ]);
 

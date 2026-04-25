@@ -30,6 +30,7 @@ function payload(fd: FormData) {
     respeta_veta: fd.get("respeta_veta") === "on",
     referencia_proveedor:
       String(fd.get("referencia_proveedor") ?? "").trim() || null,
+    foto_url: String(fd.get("foto_url") ?? "").trim() || null,
     notas: String(fd.get("notas") ?? "").trim() || null,
   };
 }

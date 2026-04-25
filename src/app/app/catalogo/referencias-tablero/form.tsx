@@ -1,11 +1,19 @@
+"use client";
+
+import { useState } from "react";
 import type {
   Acabado,
   Material,
   Proveedor,
   ReferenciaTablero,
 } from "@/lib/tipos/catalogo";
-import { NINGUNA } from "@/lib/tipos/catalogo";
-import { Field, Select, SubmitButton, Textarea } from "../shared";
+import { Field, SubmitButton, Textarea } from "../shared";
+import { PickerTrigger } from "@/components/picker-modal";
+import { Label } from "@/components/ui/label";
+
+type MatLite = Pick<Material, "id" | "nombre" | "categoria"> & { foto_url?: string | null };
+type AcaLite = Pick<Acabado, "id" | "nombre"> & { foto_url?: string | null; color_hex?: string | null };
+type ProvLite = Pick<Proveedor, "id" | "nombre">;
 
 export function ReferenciaTableroForm({
   referencia,
@@ -16,38 +24,53 @@ export function ReferenciaTableroForm({
   submitLabel,
 }: {
   referencia?: ReferenciaTablero | null;
-  materiales: Pick<Material, "id" | "nombre" | "categoria">[];
-  acabados: Pick<Acabado, "id" | "nombre">[];
-  proveedores: Pick<Proveedor, "id" | "nombre">[];
+  materiales: MatLite[];
+  acabados: AcaLite[];
+  proveedores: ProvLite[];
   action: (fd: FormData) => void | Promise<void>;
   submitLabel: string;
 }) {
+  const [materialId, setMaterialId] = useState(referencia?.material_id ?? "");
+  const [acabadoId, setAcabadoId] = useState(referencia?.acabado_id ?? "");
+  const [proveedorId, setProveedorId] = useState(referencia?.proveedor_id ?? "");
+
   return (
     <form action={action} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <Select
-          label="Material *"
-          name="material_id"
-          required
-          defaultValue={referencia?.material_id ?? ""}
-          options={[
-            { value: "", label: "— selecciona —" },
-            ...materiales.map((m) => ({
-              value: m.id,
-              label: `${m.nombre} (${m.categoria})`,
-            })),
-          ]}
-        />
-        <Select
-          label="Acabado *"
-          name="acabado_id"
-          required
-          defaultValue={referencia?.acabado_id ?? ""}
-          options={[
-            { value: "", label: "— selecciona —" },
-            ...acabados.map((a) => ({ value: a.id, label: a.nombre })),
-          ]}
-        />
+        <div className="space-y-1.5">
+          <Label>Material *</Label>
+          <PickerTrigger
+            name="material_id"
+            required
+            value={materialId}
+            onChange={setMaterialId}
+            placeholder="— selecciona material —"
+            title="Elegir material"
+            items={materiales.map((m) => ({
+              id: m.id,
+              nombre: m.nombre,
+              descripcion: m.categoria,
+              foto_url: m.foto_url ?? null,
+            }))}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Acabado *</Label>
+          <PickerTrigger
+            name="acabado_id"
+            required
+            value={acabadoId}
+            onChange={setAcabadoId}
+            placeholder="— selecciona acabado —"
+            title="Elegir acabado"
+            items={acabados.map((a) => ({
+              id: a.id,
+              nombre: a.nombre,
+              foto_url: a.foto_url ?? null,
+              color: a.color_hex ?? null,
+            }))}
+          />
+        </div>
         <Field
           label="Grosor (mm) *"
           name="grosor_mm"
@@ -64,20 +87,29 @@ export function ReferenciaTableroForm({
           defaultValue={referencia?.precio_m2}
           required
         />
-        <Select
-          label="Proveedor"
-          name="proveedor_id"
-          defaultValue={referencia?.proveedor_id ?? NINGUNA}
-          options={[
-            { value: NINGUNA, label: "— sin proveedor —" },
-            ...proveedores.map((p) => ({ value: p.id, label: p.nombre })),
-          ]}
-        />
+        <div className="space-y-1.5">
+          <Label>Proveedor</Label>
+          <PickerTrigger
+            name="proveedor_id"
+            value={proveedorId}
+            onChange={setProveedorId}
+            placeholder="— sin proveedor —"
+            title="Elegir proveedor"
+            items={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
+          />
+        </div>
         <Field
           label="Ref. proveedor"
           name="referencia_proveedor"
           defaultValue={referencia?.referencia_proveedor}
           placeholder="Código catálogo"
+        />
+        <Field
+          label="URL fotografía"
+          name="foto_url"
+          defaultValue={(referencia as { foto_url?: string | null } | null)?.foto_url ?? ""}
+          placeholder="https://…"
+          className="sm:col-span-2"
         />
       </div>
       <label className="flex items-center gap-2 text-sm">

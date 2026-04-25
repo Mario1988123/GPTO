@@ -30,8 +30,8 @@ export default async function DetalleReferenciaTableroPage({
   if (!r) notFound();
 
   const [{ data: materiales }, { data: acabados }, { data: proveedores }, { data: formatos }] = await Promise.all([
-    s.from("materiales").select("id, nombre, categoria").eq("activo", true).order("nombre"),
-    s.from("acabados").select("id, nombre").eq("activo", true).order("nombre"),
+    s.from("materiales").select("id, nombre, categoria, foto_url").eq("activo", true).order("nombre"),
+    s.from("acabados").select("id, nombre, color_hex, foto_url").eq("activo", true).order("nombre"),
     s.from("proveedores").select("id, nombre").eq("activo", true).order("nombre"),
     s.from("referencia_tablero_formatos")
       .select("id, ancho_mm, alto_mm, ancho_util_mm, alto_util_mm, precio_unidad_eur, notas")
