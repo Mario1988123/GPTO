@@ -1,6 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import type { Herraje, Proveedor } from "@/lib/tipos/catalogo";
-import { NINGUNA, TIPOS_HERRAJE } from "@/lib/tipos/catalogo";
+import { TIPOS_HERRAJE } from "@/lib/tipos/catalogo";
 import { Field, Select, SubmitButton, Textarea } from "../shared";
+import { PickerTrigger } from "@/components/picker-modal";
+import { Label } from "@/components/ui/label";
+import { FotoUploader } from "@/components/foto-uploader";
 
 export function HerrajeForm({
   herraje,
@@ -13,6 +19,8 @@ export function HerrajeForm({
   action: (fd: FormData) => void | Promise<void>;
   submitLabel: string;
 }) {
+  const [proveedorId, setProveedorId] = useState(herraje?.proveedor_id ?? "");
+
   return (
     <form action={action} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -26,21 +34,26 @@ export function HerrajeForm({
         />
         <Field label="Precio (€/unidad) *" name="precio_unidad" type="number" step="0.01" defaultValue={herraje?.precio_unidad} required />
         <Field label="Stock disponible" name="stock_disponible" type="number" step="1" defaultValue={herraje?.stock_disponible ?? 0} />
-        <Select
-          label="Proveedor"
-          name="proveedor_id"
-          defaultValue={herraje?.proveedor_id ?? NINGUNA}
-          options={[
-            { value: NINGUNA, label: "— sin proveedor —" },
-            ...proveedores.map((p) => ({ value: p.id, label: p.nombre })),
-          ]}
-        />
+        <div className="space-y-1.5">
+          <Label>Proveedor</Label>
+          <PickerTrigger
+            name="proveedor_id"
+            value={proveedorId}
+            onChange={setProveedorId}
+            placeholder="— sin proveedor —"
+            title="Elegir proveedor"
+            items={proveedores.map((p) => ({ id: p.id, nombre: p.nombre }))}
+          />
+        </div>
         <Field label="Ref. proveedor" name="referencia_proveedor" defaultValue={herraje?.referencia_proveedor} />
-        <Field
-          label="URL fotografía"
-          name="foto_url"
-          defaultValue={(herraje as { foto_url?: string | null } | null)?.foto_url ?? ""}
-        />
+        <div className="sm:col-span-2">
+          <FotoUploader
+            name="foto_url"
+            defaultUrl={(herraje as { foto_url?: string | null } | null)?.foto_url ?? null}
+            carpeta="herrajes"
+            label="Fotografía del herraje"
+          />
+        </div>
       </div>
       <Textarea label="Notas" name="notas" defaultValue={herraje?.notas} />
       <SubmitButton label={submitLabel} />

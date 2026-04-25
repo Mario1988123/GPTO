@@ -10,6 +10,7 @@ import type {
 import { Field, SubmitButton, Textarea } from "../shared";
 import { PickerTrigger } from "@/components/picker-modal";
 import { Label } from "@/components/ui/label";
+import { FotoUploader } from "@/components/foto-uploader";
 
 type MatLite = Pick<Material, "id" | "nombre" | "categoria"> & { foto_url?: string | null };
 type AcaLite = Pick<Acabado, "id" | "nombre"> & { foto_url?: string | null; color_hex?: string | null };
@@ -104,13 +105,14 @@ export function ReferenciaTableroForm({
           defaultValue={referencia?.referencia_proveedor}
           placeholder="Código catálogo"
         />
-        <Field
-          label="URL fotografía"
-          name="foto_url"
-          defaultValue={(referencia as { foto_url?: string | null } | null)?.foto_url ?? ""}
-          placeholder="https://…"
-          className="sm:col-span-2"
-        />
+        <div className="sm:col-span-2">
+          <FotoUploader
+            name="foto_url"
+            defaultUrl={(referencia as { foto_url?: string | null } | null)?.foto_url ?? null}
+            carpeta="referencias-tablero"
+            label="Fotografía de la referencia"
+          />
+        </div>
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { FotoUploader } from "@/components/foto-uploader";
 
 type Props = {
   cliente?: Cliente | null;
@@ -189,11 +190,11 @@ export function ClienteForm({ cliente, action, submitLabel }: Props) {
             value={local.origen}
             onChange={(v) => setLocal({ ...local, origen: v })}
           />
-          <Field
-            label="URL avatar / logo"
+          <FotoUploader
             name="foto_url"
-            value={local.foto_url}
-            onChange={(v) => setLocal({ ...local, foto_url: v })}
+            defaultUrl={local.foto_url}
+            carpeta="clientes"
+            label="Avatar / logo"
           />
           <div className="space-y-1.5">
             <Label htmlFor="proximo_seguimiento">Próximo seguimiento</Label>

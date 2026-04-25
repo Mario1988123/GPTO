@@ -18,7 +18,7 @@ export default async function DetalleCantoPage({ params }: { params: Promise<{ i
   if (!c) notFound();
 
   const [{ data: acabados }, { data: proveedores }] = await Promise.all([
-    s.from("acabados").select("id, nombre").eq("activo", true).order("nombre"),
+    s.from("acabados").select("id, nombre, color_hex, foto_url").eq("activo", true).order("nombre"),
     s.from("proveedores").select("id, nombre").eq("activo", true).order("nombre"),
   ]);
 

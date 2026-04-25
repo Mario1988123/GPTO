@@ -1,5 +1,6 @@
 import type { Acabado } from "@/lib/tipos/catalogo";
 import { Field, SubmitButton } from "../shared";
+import { FotoUploader } from "@/components/foto-uploader";
 
 export function AcabadoForm({
   acabado,
@@ -17,13 +18,14 @@ export function AcabadoForm({
         <Field label="Código proveedor" name="codigo" defaultValue={acabado?.codigo} placeholder="ej: Egger U123" />
         <Field label="Color (hex)" name="color_hex" defaultValue={acabado?.color_hex} placeholder="#D4C5A8" />
         <Field label="Textura" name="textura" defaultValue={acabado?.textura} placeholder="ej: poro abierto" />
-        <Field
-          label="URL fotografía"
-          name="foto_url"
-          defaultValue={(acabado as { foto_url?: string | null } | null)?.foto_url ?? ""}
-          placeholder="https://…"
-          className="sm:col-span-2"
-        />
+        <div className="sm:col-span-2">
+          <FotoUploader
+            name="foto_url"
+            defaultUrl={(acabado as { foto_url?: string | null } | null)?.foto_url ?? null}
+            carpeta="acabados"
+            label="Fotografía del acabado"
+          />
+        </div>
       </div>
       <SubmitButton label={submitLabel} />
     </form>

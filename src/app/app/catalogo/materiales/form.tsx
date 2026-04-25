@@ -1,6 +1,7 @@
 import type { Material } from "@/lib/tipos/catalogo";
 import { CATEGORIAS_MATERIAL } from "@/lib/tipos/catalogo";
 import { Field, Select, SubmitButton, Textarea } from "../shared";
+import { FotoUploader } from "@/components/foto-uploader";
 
 export function MaterialForm({
   material,
@@ -22,13 +23,14 @@ export function MaterialForm({
           defaultValue={material?.categoria ?? "tablero"}
           options={CATEGORIAS_MATERIAL}
         />
-        <Field
-          label="URL fotografía"
-          name="foto_url"
-          defaultValue={(material as { foto_url?: string | null } | null)?.foto_url ?? ""}
-          placeholder="https://…"
-          className="sm:col-span-2"
-        />
+        <div className="sm:col-span-2">
+          <FotoUploader
+            name="foto_url"
+            defaultUrl={(material as { foto_url?: string | null } | null)?.foto_url ?? null}
+            carpeta="materiales"
+            label="Fotografía del material"
+          />
+        </div>
       </div>
       <Textarea label="Descripción" name="descripcion" defaultValue={material?.descripcion} />
       <SubmitButton label={submitLabel} />
