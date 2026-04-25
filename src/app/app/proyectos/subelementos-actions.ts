@@ -267,6 +267,7 @@ export async function actualizarConfiguracionModulo(
     separacion_cajones_mm: parseOpt("separacion_cajones_mm") ?? 2,
     mostrar_puertas:
       fd.get("mostrar_puertas") === "on" || fd.get("mostrar_puertas") === "true",
+    notas: String(fd.get("notas") ?? "").trim() || null,
   };
 
   const { error } = await s.from("modulos_armario").update(update).eq("id", moduloId);

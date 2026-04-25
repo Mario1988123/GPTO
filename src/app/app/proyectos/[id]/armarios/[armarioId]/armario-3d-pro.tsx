@@ -27,6 +27,7 @@ export type ModuloPro = {
   trasera_grosor_mm?: number | null;
   separacion_cajones_mm?: number;
   mostrar_puertas?: boolean;
+  notas?: string | null;
   grosor_tablero_default_mm?: number; // Viene de referencia_tablero_id
 };
 

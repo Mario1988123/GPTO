@@ -539,6 +539,20 @@ function ConfigModulo({
         </label>
       </div>
 
+      {/* Observaciones del módulo (van a las notas del presupuesto también) */}
+      <label className="mt-3 block space-y-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          Observaciones / notas del módulo
+        </span>
+        <textarea
+          name="notas"
+          rows={2}
+          defaultValue={modulo.notas ?? ""}
+          placeholder="Ej: balda reforzada extra, canaleta LED oculta, veta horizontal..."
+          className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs"
+        />
+      </label>
+
       <Button type="submit" size="sm" disabled={pending} className="mt-3 w-full" variant="outline">
         Guardar construcción
       </Button>

@@ -234,6 +234,7 @@ export default async function ConfiguradorArmarioPage({
               trasera_grosor_mm: (m as unknown as { trasera_grosor_mm: number | null }).trasera_grosor_mm ?? null,
               separacion_cajones_mm: (m as unknown as { separacion_cajones_mm: number }).separacion_cajones_mm ?? 2,
               mostrar_puertas: (m as unknown as { mostrar_puertas: boolean }).mostrar_puertas ?? true,
+              notas: m.notas ?? null,
               grosor_tablero_default_mm: m.referencias_tablero?.grosor_mm ?? 16,
             }))}
             onMoverModulo={async (moduloId, x, y) => {

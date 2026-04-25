@@ -25,11 +25,16 @@ function loadEnv() {
 }
 
 // Piezas base comunes: 2 laterales + suelo + techo + trasera.
+// Convención: costados de pie, suelo+techo encastrados entre costados, trasera encastrada al fondo.
+// - Lateral: alto × (fondo - grosor_trasera).  ajuste_ancho_mm=-10 asume trasera 10mm.
+//   (Mejora futura: campo ajuste_ancho_trasera_grosores que aplique trasera_grosor_mm del módulo).
+// - Suelo/Techo: (ancho - 2×grosor) × (fondo - grosor_trasera).
+// - Trasera: (ancho - 2×grosor) × (alto - 2×grosor) × grosor_trasera.
 const PIEZAS_BASE = [
-  { nombre: "Lateral", cantidad: 2, orden: 0, fuente_largo: "alto", ajuste_largo_mm: 0, ajuste_largo_grosores: 0, fuente_ancho: "fondo", ajuste_ancho_mm: 0, ajuste_ancho_grosores: 0, lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
-  { nombre: "Suelo", cantidad: 1, orden: 1, fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, fuente_ancho: "fondo", ajuste_ancho_mm: 0, ajuste_ancho_grosores: 0, lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
-  { nombre: "Techo", cantidad: 1, orden: 2, fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, fuente_ancho: "fondo", ajuste_ancho_mm: 0, ajuste_ancho_grosores: 0, lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
-  { nombre: "Trasera", cantidad: 1, orden: 3, fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, fuente_ancho: "alto", ajuste_ancho_mm: 0, ajuste_ancho_grosores: -2, lados_con_canto: "ninguno", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
+  { nombre: "Lateral", cantidad: 2, orden: 0, fuente_largo: "alto", ajuste_largo_mm: 0, ajuste_largo_grosores: 0, fuente_ancho: "fondo", ajuste_ancho_mm: -10, ajuste_ancho_grosores: 0, lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
+  { nombre: "Suelo", cantidad: 1, orden: 1, fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, fuente_ancho: "fondo", ajuste_ancho_mm: -10, ajuste_ancho_grosores: 0, lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
+  { nombre: "Techo", cantidad: 1, orden: 2, fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, fuente_ancho: "fondo", ajuste_ancho_mm: -10, ajuste_ancho_grosores: 0, lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
+  { nombre: "Trasera", cantidad: 1, orden: 3, fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, fuente_ancho: "alto", ajuste_ancho_mm: 0, ajuste_ancho_grosores: -2, lados_con_canto: "ninguno", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null, es_trasera: true },
 ];
 
 const piezaBalda = (orden) => ({
@@ -84,6 +89,86 @@ const TIPOS_ESTANDAR = [
     ancho: 600, alto: 2000, fondo: 400, horas: 3,
     piezas: [...PIEZAS_BASE, piezaBalda(4), piezaBalda(5), piezaBalda(6), piezaBalda(7), piezaBalda(8)],
   },
+  // ================== COCINA (Capa 22) ==================
+  // Muebles bajos: alto 720mm, fondo 560mm (estándar encimera 60cm con encimera 40mm).
+  {
+    nombre: "Bajo cocina 30cm", categoria: "cocina_bajo",
+    ancho: 300, alto: 720, fondo: 560, horas: 1.2,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4)],
+  },
+  {
+    nombre: "Bajo cocina 40cm", categoria: "cocina_bajo",
+    ancho: 400, alto: 720, fondo: 560, horas: 1.3,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4)],
+  },
+  {
+    nombre: "Bajo cocina 50cm", categoria: "cocina_bajo",
+    ancho: 500, alto: 720, fondo: 560, horas: 1.4,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4)],
+  },
+  {
+    nombre: "Bajo cocina 60cm", categoria: "cocina_bajo",
+    ancho: 600, alto: 720, fondo: 560, horas: 1.5,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4)],
+  },
+  {
+    nombre: "Bajo cocina 80cm (2 puertas)", categoria: "cocina_bajo",
+    ancho: 800, alto: 720, fondo: 560, horas: 1.8,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4), piezaPuerta(5)],
+  },
+  {
+    nombre: "Bajo cocina 90cm (2 puertas)", categoria: "cocina_bajo",
+    ancho: 900, alto: 720, fondo: 560, horas: 1.9,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4), piezaPuerta(5)],
+  },
+  // Cacerolero (3 cajones de gran altura): bajo de cocina destinado a cacerolas.
+  {
+    nombre: "Cacerolero 60cm (3 cajones)", categoria: "cocina_cacerolero",
+    ancho: 600, alto: 720, fondo: 560, horas: 2.8,
+    piezas: [...PIEZAS_BASE, piezaFrontalCajon(4), piezaFrontalCajon(5), piezaFrontalCajon(6)],
+  },
+  {
+    nombre: "Cacerolero 90cm (3 cajones)", categoria: "cocina_cacerolero",
+    ancho: 900, alto: 720, fondo: 560, horas: 3.2,
+    piezas: [...PIEZAS_BASE, piezaFrontalCajon(4), piezaFrontalCajon(5), piezaFrontalCajon(6)],
+  },
+  // Esquineros: mueble de rincón 90x90 con giratorio o puerta chaflán.
+  {
+    nombre: "Esquinero bajo 90×90", categoria: "cocina_esquinero",
+    ancho: 900, alto: 720, fondo: 900, horas: 3.5,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4)],
+  },
+  // Muebles altos: alto 900mm, fondo 350mm (más estrecho que los bajos).
+  {
+    nombre: "Alto cocina 30cm", categoria: "cocina_alto",
+    ancho: 300, alto: 900, fondo: 350, horas: 1.2,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4)],
+  },
+  {
+    nombre: "Alto cocina 40cm", categoria: "cocina_alto",
+    ancho: 400, alto: 900, fondo: 350, horas: 1.3,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4)],
+  },
+  {
+    nombre: "Alto cocina 60cm", categoria: "cocina_alto",
+    ancho: 600, alto: 900, fondo: 350, horas: 1.5,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4)],
+  },
+  {
+    nombre: "Alto cocina 80cm (2 puertas)", categoria: "cocina_alto",
+    ancho: 800, alto: 900, fondo: 350, horas: 1.8,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4), piezaPuerta(5)],
+  },
+  {
+    nombre: "Columna horno + microondas 60cm", categoria: "cocina_columna",
+    ancho: 600, alto: 2100, fondo: 560, horas: 3.5,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4), piezaPuerta(5)],
+  },
+  {
+    nombre: "Columna despensa 60cm", categoria: "cocina_columna",
+    ancho: 600, alto: 2100, fondo: 560, horas: 3.2,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4), piezaPuerta(5), piezaBalda(6), piezaBalda(7), piezaBalda(8)],
+  },
   {
     nombre: "Hueco libre", categoria: "otro",
     ancho: 900, alto: 2000, fondo: 600, horas: 2,
@@ -132,7 +217,15 @@ async function main() {
     const tipoId = ins.data.id;
 
     if (t.piezas.length > 0) {
-      const rows = t.piezas.map((p) => ({ tipo_modulo_id: tipoId, ...p, respeta_veta_override: null, canto_id: null, referencia_tablero_id: null, notas: null }));
+      const rows = t.piezas.map((p) => ({
+        tipo_modulo_id: tipoId,
+        ...p,
+        respeta_veta_override: null,
+        canto_id: null,
+        referencia_tablero_id: null,
+        notas: null,
+        es_trasera: p.es_trasera ?? false,
+      }));
       const insP = await sb.from("tipo_modulo_piezas").insert(rows);
       if (insP.error) console.error("  err piezas", insP.error.message);
     }

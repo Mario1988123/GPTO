@@ -463,24 +463,46 @@ export async function emitirPresupuesto(presupuestoId: string) {
 export async function cambiarEstadoPresupuesto(presupuestoId: string, estado: EstadoPresupuesto) {
   if (!ESTADOS.includes(estado)) throw new Error("Estado inválido.");
   const s = await createClient();
+
+  // Obtener proyecto asociado antes del cambio (para actualizarlo si corresponde)
+  const { data: pres } = await s
+    .from("presupuestos")
+    .select("proyecto_id")
+    .eq("id", presupuestoId)
+    .maybeSingle<{ proyecto_id: string }>();
+
   const { error } = await s.from("presupuestos").update({ estado }).eq("id", presupuestoId);
   if (error) redirect(`/app/presupuestos/${presupuestoId}?error=${encodeURIComponent(error.message)}`);
 
-  // Si pasa a aceptado → crear pedido automáticamente.
-  if (estado === "aceptado") {
+  // Si pasa a aceptado → crear pedido automáticamente + mover proyecto a 'confirmado'.
+  if (estado === "aceptado" && pres?.proyecto_id) {
+    await s
+      .from("proyectos")
+      .update({ estado: "confirmado" })
+      .eq("id", pres.proyecto_id)
+      .in("estado", ["borrador", "presupuestado"]);
     try {
       const { crearPedidoDesdePresupuesto } = await import("../pedidos/actions");
       await crearPedidoDesdePresupuesto(presupuestoId);
     } catch (e) {
-      // Si falla la creación del pedido, ya hemos cambiado el estado. Lo reportamos.
       const msg = e instanceof Error ? e.message : "Error creando pedido";
       redirect(`/app/presupuestos/${presupuestoId}?error=${encodeURIComponent("Presupuesto aceptado pero fallo pedido: " + msg)}`);
     }
   }
 
+  // Si pasa a enviado → mover proyecto a 'presupuestado' si está en borrador.
+  if (estado === "enviado" && pres?.proyecto_id) {
+    await s
+      .from("proyectos")
+      .update({ estado: "presupuestado" })
+      .eq("id", pres.proyecto_id)
+      .eq("estado", "borrador");
+  }
+
   revalidatePath(`/app/presupuestos/${presupuestoId}`);
   revalidatePath("/app/presupuestos");
   revalidatePath("/app/pedidos");
+  if (pres?.proyecto_id) revalidatePath(`/app/proyectos/${pres.proyecto_id}`);
   redirect(`/app/presupuestos/${presupuestoId}?ok=actualizado`);
 }
 
