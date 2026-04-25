@@ -17,6 +17,7 @@ import {
   User,
   Building2,
   Truck,
+  TrendingUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -144,6 +145,13 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
             >
               <Calendar className="h-3.5 w-3.5" />
               Agenda
+            </Link>
+            <Link
+              href={`/app/proyectos/${id}/gastos`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <TrendingUp className="h-3.5 w-3.5" />
+              Gastos
             </Link>
             {/* Acciones dependientes de armarios: solo si hay al menos uno */}
             {hayArmarios && !cerrado && (
