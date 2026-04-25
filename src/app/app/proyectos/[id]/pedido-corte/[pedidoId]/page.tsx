@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, Trash2, Truck, Calendar, Euro } from "lucide-react";
+import { ArrowLeft, Trash2, Truck, Calendar, Euro, ClipboardCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { actualizarPedidoCorte, eliminarPedidoCorte } from "../../../pedidos-tableros-actions";
 import { ToastFromSearchParams } from "../../../../catalogo/shared";
@@ -80,6 +80,13 @@ export default async function DetallePedidoCortePage({
             {estadoMeta && (
               <Badge className={`${estadoMeta.c} border-0`}>{estadoMeta.l}</Badge>
             )}
+            <Link
+              href={`/app/proyectos/${proyectoId}/pedido-corte/${pedidoId}/recepcion`}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium hover:bg-muted"
+            >
+              <ClipboardCheck className="h-3.5 w-3.5" />
+              Recepción & incidencias
+            </Link>
             <form action={borrar} className="inline">
               <Button type="submit" variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" title="Eliminar pedido">
                 <Trash2 className="h-3.5 w-3.5" />

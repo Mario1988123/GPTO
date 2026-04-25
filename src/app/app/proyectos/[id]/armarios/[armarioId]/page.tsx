@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, Trash2, Sparkles } from "lucide-react";
+import { ArrowLeft, Trash2, Sparkles, Boxes } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
   anadirModulo,
@@ -155,6 +155,13 @@ export default async function ConfiguradorArmarioPage({
                 ? `Empotrado · tapeta ${armario.margen_tapeta_mm} mm`
                 : "Suelto"}
             </Badge>
+            <Link
+              href={`/app/proyectos/${proyectoId}/armarios/${armarioId}/montaje`}
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-3 text-xs font-medium hover:bg-muted"
+            >
+              <Boxes className="h-3.5 w-3.5" />
+              Plano de montaje
+            </Link>
           </>
         }
       />
