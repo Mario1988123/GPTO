@@ -13,6 +13,8 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { TelefonoLinks } from "@/components/telefono-links";
+import { Timeline } from "../timeline";
+import { WhatsAppPlantillas } from "@/components/whatsapp-plantillas";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +34,18 @@ export default async function DetalleClientePage({
 
   if (error || !cliente) notFound();
 
-  // Historial de proyectos del cliente
-  const { data: proyectosCliente } = await supabase
-    .from("proyectos")
-    .select("id, nombre, estado, created_at, updated_at, fecha_entrega_comprometida, armarios(count), estancias(count)")
-    .eq("cliente_id", id)
-    .order("updated_at", { ascending: false });
+  const [{ data: proyectosCliente }, { data: interacciones }] = await Promise.all([
+    supabase
+      .from("proyectos")
+      .select("id, nombre, estado, created_at, updated_at, fecha_entrega_comprometida, armarios(count), estancias(count)")
+      .eq("cliente_id", id)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("cliente_interacciones")
+      .select("id, tipo, titulo, descripcion, fecha")
+      .eq("cliente_id", id)
+      .order("fecha", { ascending: false }),
+  ]);
 
   const actualizar = async (formData: FormData) => {
     "use server";
@@ -125,9 +133,14 @@ export default async function DetalleClientePage({
       {/* Resumen de contactos con accesos directos a llamada / WhatsApp / email */}
       {(cliente.telefono || cliente.email || cliente.contacto_telefono || cliente.contacto2_telefono) && (
         <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
-          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-            Contactos rápidos
-          </p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Contactos rápidos
+            </p>
+            {cliente.telefono && (
+              <WhatsAppPlantillas telefono={cliente.telefono} nombre={tituloCompleto} />
+            )}
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {cliente.telefono && (
               <ContactoRow nombre={cliente.es_empresa ? "Centralita" : "Principal"} telefono={cliente.telefono} email={cliente.email} />
@@ -222,6 +235,8 @@ export default async function DetalleClientePage({
           </ul>
         )}
       </section>
+
+      <Timeline clienteId={id} interacciones={(interacciones ?? []) as { id: string; tipo: string; titulo: string; descripcion: string | null; fecha: string }[]} />
 
       <p className="mt-4 text-right text-xs text-muted-foreground">
         Creado {new Date(cliente.created_at).toLocaleDateString("es-ES")}

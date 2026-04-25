@@ -49,6 +49,21 @@ export async function actualizarAjustesEmpresa(empresaId: string, fd: FormData) 
   maybeStr("herraje_union_default_id"); // UUID del herraje a usar en uniones
   maybeNum("herrajes_por_union", 4);    // cantidad por cada junta
 
+  // Datos fiscales para facturación legal (RD 1619/2012)
+  const datos_fiscales: Record<string, string> = {};
+  for (const [k, dest] of [
+    ["datos_fiscales_razon_social", "razon_social"],
+    ["datos_fiscales_nif", "nif"],
+    ["datos_fiscales_domicilio", "domicilio_fiscal"],
+    ["datos_fiscales_iban", "iban"],
+  ] as const) {
+    const v = String(fd.get(k) ?? "").trim();
+    if (v) datos_fiscales[dest] = v;
+  }
+  if (Object.keys(datos_fiscales).length > 0) {
+    config_empresa.datos_fiscales = datos_fiscales;
+  }
+
   const { error } = await s.from("empresas").update({ nombre, config_empresa }).eq("id", empresaId);
   if (error) redirect(`/app/ajustes?error=${encodeURIComponent(error.message)}`);
 

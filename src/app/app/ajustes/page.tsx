@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { Building2, Receipt, Ruler, Layers } from "lucide-react";
+import { Building2, Receipt, Ruler, Layers, FileText } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ToastFromSearchParams } from "../catalogo/shared";
@@ -41,6 +41,13 @@ export default async function AjustesPage() {
         <Section icon={Receipt} title="Facturación" desc="Valores por defecto para presupuestos.">
           <Field name="precio_hora_mano_obra_eur" label="Precio hora mano de obra (€)" type="number" step="0.01" defaultValue={cfg.precio_hora_mano_obra_eur as number | undefined} placeholder="25" />
           <Field name="iva_porcentaje" label="IVA (%)" type="number" step="0.01" defaultValue={cfg.iva_porcentaje as number | undefined} placeholder="21" />
+        </Section>
+
+        <Section icon={FileText} title="Datos fiscales (RD 1619/2012)" desc="Aparecen en todas las facturas. Obligatorios para emitir.">
+          <Field name="datos_fiscales_razon_social" label="Razón social *" defaultValue={(cfg.datos_fiscales as Record<string, string> | undefined)?.razon_social} placeholder="Carpintería ACME SL" />
+          <Field name="datos_fiscales_nif" label="NIF / CIF *" defaultValue={(cfg.datos_fiscales as Record<string, string> | undefined)?.nif} placeholder="B12345678" />
+          <Field name="datos_fiscales_domicilio" label="Domicilio fiscal *" defaultValue={(cfg.datos_fiscales as Record<string, string> | undefined)?.domicilio_fiscal} placeholder="Av. Industrial 5, 15011 A Coruña" className="sm:col-span-2" />
+          <Field name="datos_fiscales_iban" label="IBAN" defaultValue={(cfg.datos_fiscales as Record<string, string> | undefined)?.iban} placeholder="ES00 ..." className="sm:col-span-2" />
         </Section>
 
         <Section icon={Ruler} title="Tablero y corte" desc="Dimensiones del tablero estándar y parámetros de corte. Afectan al nesting y a las particiones automáticas.">

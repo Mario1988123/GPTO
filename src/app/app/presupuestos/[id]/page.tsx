@@ -479,6 +479,21 @@ function ChangeEstadoButtons({ id, estado }: { id: string; estado: EstadoPresupu
   const aceptar = async () => { "use server"; await cambiarEstadoPresupuesto(id, "aceptado"); };
   const rechazar = async () => { "use server"; await cambiarEstadoPresupuesto(id, "rechazado"); };
   const caducar = async () => { "use server"; await cambiarEstadoPresupuesto(id, "caducado"); };
+  const facturar = async () => {
+    "use server";
+    const { crearFacturaDesdePresupuesto } = await import("../../facturas/actions");
+    await crearFacturaDesdePresupuesto(id);
+  };
+  if (estado === "aceptado") {
+    return (
+      <form action={facturar}>
+        <Button type="submit" size="sm" className="bg-blue-600 text-white hover:bg-blue-700">
+          <Check className="h-3.5 w-3.5" />
+          Crear factura
+        </Button>
+      </form>
+    );
+  }
   if (estado === "enviado") {
     return (
       <>
