@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Users, Plus, Search, Mail, Phone, Pencil, Trash2, Power, FolderPlus, Building2, User } from "lucide-react";
+import { Users, Plus, Search, Mail, Pencil, Trash2, Power, FolderPlus, Building2, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ToastFromSearchParams } from "./toasts";
 import { alternarActivo, eliminarCliente } from "./actions";
 import type { Cliente } from "@/lib/tipos/cliente";
 import { nombreCompletoCliente } from "@/lib/tipos/cliente";
+import { TelefonoLinks } from "@/components/telefono-links";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -147,9 +148,17 @@ export default async function ClientesPage({
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">{c.nif ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">
-                      <div className="flex flex-col gap-0.5 text-xs">
-                        {c.email && <span className="inline-flex items-center gap-1.5"><Mail className="h-3 w-3" /> {c.email}</span>}
-                        {c.telefono && <span className="inline-flex items-center gap-1.5"><Phone className="h-3 w-3" /> {c.telefono}</span>}
+                      <div className="flex flex-col gap-1 text-xs">
+                        {c.email && (
+                          <a
+                            href={`mailto:${c.email}`}
+                            className="inline-flex items-center gap-1.5 hover:text-foreground hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Mail className="h-3 w-3" /> {c.email}
+                          </a>
+                        )}
+                        {c.telefono && <TelefonoLinks telefono={c.telefono} size="xs" />}
                         {!c.email && !c.telefono && "—"}
                       </div>
                     </TableCell>

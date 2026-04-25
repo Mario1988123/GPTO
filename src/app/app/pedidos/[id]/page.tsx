@@ -17,6 +17,7 @@ import { formatEur } from "@/lib/tipos/presupuestos";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { TelefonoLinks } from "@/components/telefono-links";
 
 export const dynamic = "force-dynamic";
 
@@ -285,12 +286,7 @@ export default async function DetallePedidoPage({ params }: { params: Promise<{ 
                     </a>
                   ) : null}
                   {ped.proyectos.clientes.telefono ? (
-                    <a
-                      href={`tel:${ped.proyectos.clientes.telefono}`}
-                      className="block text-blue-600 hover:underline"
-                    >
-                      {ped.proyectos.clientes.telefono}
-                    </a>
+                    <TelefonoLinks telefono={ped.proyectos.clientes.telefono} size="xs" />
                   ) : null}
                 </div>
               </div>

@@ -23,6 +23,7 @@ type Fila = {
   largo_lama_mm: number | null;
   acabado: string | null;
   precio_pvp_m2: number;
+  foto_url: string | null;
   proveedores: { nombre: string } | null;
 };
 
@@ -42,7 +43,7 @@ export default async function SuelosPage() {
   const [{ data }, { data: proveedores }] = await Promise.all([
     s
       .from("suelos_catalogo")
-      .select("id, nombre, tipo, clase_uso, grosor_mm, ancho_lama_mm, largo_lama_mm, acabado, precio_pvp_m2, proveedores(nombre)")
+      .select("id, nombre, tipo, clase_uso, grosor_mm, ancho_lama_mm, largo_lama_mm, acabado, precio_pvp_m2, foto_url, proveedores(nombre)")
       .eq("activo", true)
       .order("nombre")
       .returns<Fila[]>(),
@@ -105,19 +106,25 @@ export default async function SuelosPage() {
             {data.map((p) => {
               const borrar = async () => { "use server"; await eliminarSuelo(p.id); };
               return (
-                <li key={p.id} className="flex items-center gap-4 px-4 py-3">
+                <li key={p.id} className="flex items-center gap-4 px-4 py-3 transition hover:bg-muted/30">
                   <Grid3x3 className="h-5 w-5 text-amber-700" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold">{p.nombre}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {TIPOS.find((t) => t.v === p.tipo)?.l ?? p.tipo}
-                      {p.clase_uso ? ` · ${p.clase_uso}` : ""}
-                      {` · ${p.grosor_mm}mm`}
-                      {p.ancho_lama_mm && p.largo_lama_mm ? ` · lama ${p.ancho_lama_mm}×${p.largo_lama_mm}` : ""}
-                      {p.acabado ? ` · ${p.acabado}` : ""}
-                      {p.proveedores?.nombre ? ` · ${p.proveedores.nombre}` : ""}
-                    </p>
-                  </div>
+                  <Link href={`/app/catalogo/suelos/${p.id}`} className="flex flex-1 min-w-0 items-center gap-3">
+                    {p.foto_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.foto_url} alt={p.nombre} className="h-10 w-10 shrink-0 rounded-md object-cover ring-1 ring-border" />
+                    ) : null}
+                    <div className="min-w-0">
+                      <p className="font-semibold">{p.nombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {TIPOS.find((t) => t.v === p.tipo)?.l ?? p.tipo}
+                        {p.clase_uso ? ` · ${p.clase_uso}` : ""}
+                        {` · ${p.grosor_mm}mm`}
+                        {p.ancho_lama_mm && p.largo_lama_mm ? ` · lama ${p.ancho_lama_mm}×${p.largo_lama_mm}` : ""}
+                        {p.acabado ? ` · ${p.acabado}` : ""}
+                        {p.proveedores?.nombre ? ` · ${p.proveedores.nombre}` : ""}
+                      </p>
+                    </div>
+                  </Link>
                   <Badge variant="secondary" className="font-mono">{euros(p.precio_pvp_m2)}/m²</Badge>
                   <form action={borrar} className="inline">
                     <Button type="submit" variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>

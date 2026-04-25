@@ -24,6 +24,7 @@ type Fila = {
   ancho_tapeta_mm: number | null;
   material_cajon: string;
   precio_pvp_eur: number;
+  foto_url: string | null;
   proveedor_id: string | null;
   proveedores: { nombre: string } | null;
 };
@@ -51,7 +52,7 @@ export default async function PuertasPasoPage() {
   const [{ data }, { data: proveedores }] = await Promise.all([
     s
       .from("puertas_paso_catalogo")
-      .select("id, nombre, tipo_apertura, ancho_mm, alto_mm, grosor_muro_mm, lleva_tapeta, ancho_tapeta_mm, material_cajon, precio_pvp_eur, proveedor_id, proveedores(nombre)")
+      .select("id, nombre, tipo_apertura, ancho_mm, alto_mm, grosor_muro_mm, lleva_tapeta, ancho_tapeta_mm, material_cajon, precio_pvp_eur, foto_url, proveedor_id, proveedores(nombre)")
       .eq("activo", true)
       .order("nombre")
       .returns<Fila[]>(),
@@ -121,16 +122,22 @@ export default async function PuertasPasoPage() {
             {data.map((p) => {
               const borrar = async () => { "use server"; await eliminarPuertaPaso(p.id); };
               return (
-                <li key={p.id} className="flex items-center gap-4 px-4 py-3">
+                <li key={p.id} className="flex items-center gap-4 px-4 py-3 transition hover:bg-muted/30">
                   <DoorOpen className="h-5 w-5 text-amber-600" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold">{p.nombre}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {TIPOS.find((t) => t.v === p.tipo_apertura)?.l ?? p.tipo_apertura} · {p.ancho_mm}×{p.alto_mm} · muro {p.grosor_muro_mm}mm · {p.material_cajon}
-                      {p.lleva_tapeta ? ` · tapeta ${p.ancho_tapeta_mm ?? "?"}mm` : " · sin tapeta"}
-                      {p.proveedores?.nombre ? ` · ${p.proveedores.nombre}` : ""}
-                    </p>
-                  </div>
+                  <Link href={`/app/catalogo/puertas-paso/${p.id}`} className="flex flex-1 min-w-0 items-center gap-3">
+                    {p.foto_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.foto_url} alt={p.nombre} className="h-10 w-10 shrink-0 rounded-md object-cover ring-1 ring-border" />
+                    ) : null}
+                    <div className="min-w-0">
+                      <p className="font-semibold">{p.nombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {TIPOS.find((t) => t.v === p.tipo_apertura)?.l ?? p.tipo_apertura} · {p.ancho_mm}×{p.alto_mm} · muro {p.grosor_muro_mm}mm · {p.material_cajon}
+                        {p.lleva_tapeta ? ` · tapeta ${p.ancho_tapeta_mm ?? "?"}mm` : " · sin tapeta"}
+                        {p.proveedores?.nombre ? ` · ${p.proveedores.nombre}` : ""}
+                      </p>
+                    </div>
+                  </Link>
                   <Badge variant="secondary" className="font-mono">{euros(p.precio_pvp_eur)}</Badge>
                   <form action={borrar} className="inline">
                     <Button type="submit" variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>

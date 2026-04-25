@@ -23,6 +23,7 @@ type Fila = {
   lleva_led: boolean;
   acabado: string | null;
   precio_pvp_ml: number;
+  foto_url: string | null;
   proveedores: { nombre: string } | null;
 };
 
@@ -40,7 +41,7 @@ export default async function RodapiesPage() {
   const [{ data }, { data: proveedores }] = await Promise.all([
     s
       .from("rodapies_catalogo")
-      .select("id, nombre, material, altura_mm, grosor_mm, formato_m, lleva_led, acabado, precio_pvp_ml, proveedores(nombre)")
+      .select("id, nombre, material, altura_mm, grosor_mm, formato_m, lleva_led, acabado, precio_pvp_ml, foto_url, proveedores(nombre)")
       .eq("activo", true)
       .order("nombre")
       .returns<Fila[]>(),
@@ -99,18 +100,24 @@ export default async function RodapiesPage() {
             {data.map((p) => {
               const borrar = async () => { "use server"; await eliminarRodapie(p.id); };
               return (
-                <li key={p.id} className="flex items-center gap-4 px-4 py-3">
+                <li key={p.id} className="flex items-center gap-4 px-4 py-3 transition hover:bg-muted/30">
                   <Blinds className="h-5 w-5 text-zinc-700" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold">{p.nombre}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {MATS.find((t) => t.v === p.material)?.l ?? p.material}
-                      {` · ${p.altura_mm}×${p.grosor_mm}mm · ${p.formato_m}m`}
-                      {p.lleva_led ? " · con LED" : ""}
-                      {p.acabado ? ` · ${p.acabado}` : ""}
-                      {p.proveedores?.nombre ? ` · ${p.proveedores.nombre}` : ""}
-                    </p>
-                  </div>
+                  <Link href={`/app/catalogo/rodapies/${p.id}`} className="flex flex-1 min-w-0 items-center gap-3">
+                    {p.foto_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.foto_url} alt={p.nombre} className="h-10 w-10 shrink-0 rounded-md object-cover ring-1 ring-border" />
+                    ) : null}
+                    <div className="min-w-0">
+                      <p className="font-semibold">{p.nombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {MATS.find((t) => t.v === p.material)?.l ?? p.material}
+                        {` · ${p.altura_mm}×${p.grosor_mm}mm · ${p.formato_m}m`}
+                        {p.lleva_led ? " · con LED" : ""}
+                        {p.acabado ? ` · ${p.acabado}` : ""}
+                        {p.proveedores?.nombre ? ` · ${p.proveedores.nombre}` : ""}
+                      </p>
+                    </div>
+                  </Link>
                   <Badge variant="secondary" className="font-mono">{euros(p.precio_pvp_ml)}/ml</Badge>
                   <form action={borrar} className="inline">
                     <Button type="submit" variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10"><Trash2 className="h-4 w-4" /></Button>

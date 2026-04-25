@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, Power, Trash2, FolderPlus, Building2, User } from "lucide-react";
+import { ArrowLeft, Power, Trash2, FolderPlus, Building2, User, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { actualizarCliente, alternarActivo, eliminarCliente } from "../actions";
 import { ClienteForm } from "../cliente-form";
@@ -11,6 +11,7 @@ import { nombreCompletoCliente } from "@/lib/tipos/cliente";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { TelefonoLinks } from "@/components/telefono-links";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +97,35 @@ export default async function DetalleClientePage({
         }
       />
 
-      <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+      {/* Resumen de contactos con accesos directos a llamada / WhatsApp / email */}
+      {(cliente.telefono || cliente.email || cliente.contacto_telefono || cliente.contacto2_telefono) && (
+        <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+            Contactos rápidos
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {cliente.telefono && (
+              <ContactoRow nombre={cliente.es_empresa ? "Centralita" : "Principal"} telefono={cliente.telefono} email={cliente.email} />
+            )}
+            {(cliente.contacto_persona || cliente.contacto_telefono) && (
+              <ContactoRow
+                nombre={cliente.contacto_persona ?? "Contacto"}
+                telefono={cliente.contacto_telefono}
+                email={cliente.contacto_email}
+              />
+            )}
+            {(cliente.contacto2_persona || cliente.contacto2_telefono) && (
+              <ContactoRow
+                nombre={cliente.contacto2_persona ?? "Contacto 2º"}
+                telefono={cliente.contacto2_telefono}
+                email={cliente.contacto2_email}
+              />
+            )}
+          </div>
+        </section>
+      )}
+
+      <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
         <ClienteForm
           cliente={cliente}
           action={actualizar}
@@ -107,6 +136,38 @@ export default async function DetalleClientePage({
       <p className="mt-4 text-right text-xs text-muted-foreground">
         Creado {new Date(cliente.created_at).toLocaleDateString("es-ES")}
       </p>
+    </div>
+  );
+}
+
+function ContactoRow({
+  nombre,
+  telefono,
+  email,
+}: {
+  nombre: string;
+  telefono: string | null;
+  email: string | null;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3 py-2">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">{nombre}</p>
+        {telefono && <p className="truncate font-mono text-xs text-muted-foreground">{telefono}</p>}
+        {email && <p className="truncate text-xs text-muted-foreground">{email}</p>}
+      </div>
+      <div className="flex items-center gap-1">
+        {email && (
+          <a
+            href={`mailto:${email}`}
+            title={`Email a ${nombre}`}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-500/10 hover:text-zinc-800"
+          >
+            <Mail className="h-4 w-4" />
+          </a>
+        )}
+        {telefono && <TelefonoLinks telefono={telefono} size="sm" showText={false} />}
+      </div>
     </div>
   );
 }
