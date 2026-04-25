@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { ArrowLeft, Power, Trash2, FolderPlus, Building2, User, Mail } from "lucide-react";
+import { ArrowLeft, Power, Trash2, FolderPlus, Building2, User, Mail, FolderKanban, Calendar, Boxes } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { actualizarCliente, alternarActivo, eliminarCliente } from "../actions";
 import { ClienteForm } from "../cliente-form";
 import { ToastFromSearchParams } from "../toasts";
 import type { Cliente } from "@/lib/tipos/cliente";
 import { nombreCompletoCliente } from "@/lib/tipos/cliente";
+import { ESTADOS_PROYECTO } from "@/lib/tipos/proyectos";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -30,6 +31,13 @@ export default async function DetalleClientePage({
     .maybeSingle<Cliente>();
 
   if (error || !cliente) notFound();
+
+  // Historial de proyectos del cliente
+  const { data: proyectosCliente } = await supabase
+    .from("proyectos")
+    .select("id, nombre, estado, created_at, updated_at, fecha_entrega_comprometida, armarios(count), estancias(count)")
+    .eq("cliente_id", id)
+    .order("updated_at", { ascending: false });
 
   const actualizar = async (formData: FormData) => {
     "use server";
@@ -61,6 +69,23 @@ export default async function DetalleClientePage({
         <ArrowLeft className="h-3.5 w-3.5" />
         Volver a clientes
       </Link>
+
+      {/* Avatar y etiquetas si hay */}
+      {(cliente.foto_url || (cliente.etiquetas?.length ?? 0) > 0) && (
+        <div className="mb-4 flex items-center gap-3">
+          {cliente.foto_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={cliente.foto_url} alt={tituloCompleto} className="h-16 w-16 rounded-full object-cover ring-2 ring-border" />
+          )}
+          {(cliente.etiquetas?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {cliente.etiquetas!.map((et) => (
+                <Badge key={et} className="bg-blue-500/10 text-blue-700 dark:text-blue-400">{et}</Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <PageHeader
         eyebrow={cliente.es_empresa ? "Empresa" : "Particular"}
@@ -133,12 +158,78 @@ export default async function DetalleClientePage({
         />
       </div>
 
+      {/* Historial de proyectos del cliente */}
+      <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="mb-4 flex items-baseline justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              Historial
+            </p>
+            <h2 className="mt-0.5 text-lg font-bold tracking-tight">
+              Proyectos · {(proyectosCliente ?? []).length}
+            </h2>
+          </div>
+          <Link
+            href={`/app/proyectos/nuevo?cliente_id=${cliente.id}`}
+            className={buttonVariants({ size: "sm" })}
+          >
+            <FolderPlus className="h-3.5 w-3.5" />
+            Nuevo proyecto
+          </Link>
+        </div>
+
+        {(proyectosCliente ?? []).length === 0 ? (
+          <p className="rounded-md bg-muted/40 p-4 text-sm text-muted-foreground">
+            Este cliente aún no tiene proyectos. Crea el primero arriba.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+            {(proyectosCliente ?? []).map((p) => {
+              const estadoMeta = ESTADOS_PROYECTO.find((e) => e.value === p.estado);
+              return (
+                <li key={p.id as string}>
+                  <Link
+                    href={`/app/proyectos/${p.id}`}
+                    className="flex items-center gap-3 px-4 py-3 transition hover:bg-muted/30"
+                  >
+                    <FolderKanban className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">{p.nombre as string}</p>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
+                          <Boxes className="h-3 w-3" />
+                          {p.armarios?.[0]?.count ?? 0} arm.
+                        </span>
+                        <span>{p.estancias?.[0]?.count ?? 0} estancias</span>
+                        {p.fecha_entrega_comprometida && (
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(p.fecha_entrega_comprometida as string).toLocaleDateString("es-ES")}
+                          </span>
+                        )}
+                        <span>· actualizado {new Date(p.updated_at as string).toLocaleDateString("es-ES")}</span>
+                      </div>
+                    </div>
+                    {estadoMeta && (
+                      <Badge variant="secondary" className={`${estadoMeta.color} shrink-0 border-0`}>
+                        {estadoMeta.label}
+                      </Badge>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
       <p className="mt-4 text-right text-xs text-muted-foreground">
         Creado {new Date(cliente.created_at).toLocaleDateString("es-ES")}
       </p>
     </div>
   );
 }
+
 
 function ContactoRow({
   nombre,

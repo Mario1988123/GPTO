@@ -26,6 +26,10 @@ export type Cliente = {
   direccion: Direccion | null;
   nif: string | null;
   notas: string | null;
+  etiquetas: string[];
+  origen: string | null;
+  foto_url: string | null;
+  proximo_seguimiento: string | null;
   activo: boolean;
   created_at: string;
   updated_at: string;

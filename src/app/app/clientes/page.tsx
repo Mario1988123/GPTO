@@ -33,21 +33,32 @@ export const dynamic = "force-dynamic";
 export default async function ClientesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; ver?: string }>;
+  searchParams: Promise<{ q?: string; ver?: string; etiqueta?: string; seguimiento?: string }>;
 }) {
-  const { q = "", ver = "activos" } = await searchParams;
+  const { q = "", ver = "activos", etiqueta = "", seguimiento = "" } = await searchParams;
   const supabase = await createClient();
 
   let query = supabase
     .from("clientes")
-    .select("id, nombre, apellido1, apellido2, es_empresa, email, telefono, nif, activo, created_at")
+    .select("id, nombre, apellido1, apellido2, es_empresa, email, telefono, nif, etiquetas, foto_url, proximo_seguimiento, activo, created_at")
     .order("nombre");
 
   if (ver === "activos") query = query.eq("activo", true);
   if (ver === "inactivos") query = query.eq("activo", false);
   if (q) query = query.ilike("nombre", `%${q}%`);
+  if (etiqueta) query = query.contains("etiquetas", [etiqueta]);
+  if (seguimiento === "vencido") {
+    query = query.lte("proximo_seguimiento", new Date().toISOString().slice(0, 10));
+  } else if (seguimiento === "proximo") {
+    const en7 = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
+    query = query.gte("proximo_seguimiento", new Date().toISOString().slice(0, 10)).lte("proximo_seguimiento", en7);
+  }
 
   const { data: clientes, error } = await query;
+
+  // Set de etiquetas únicas (para el filtro)
+  const todasEtiquetas = new Set<string>();
+  for (const c of clientes ?? []) for (const et of (c as { etiquetas?: string[] }).etiquetas ?? []) todasEtiquetas.add(et);
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
@@ -83,7 +94,7 @@ export default async function ClientesPage({
             />
           </div>
         </div>
-        <div className="w-[180px] space-y-1.5">
+        <div className="w-[160px] space-y-1.5">
           <label htmlFor="ver" className="text-xs font-medium text-muted-foreground">
             Ver
           </label>
@@ -97,6 +108,39 @@ export default async function ClientesPage({
               <SelectItem value="todos">Todos</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        {todasEtiquetas.size > 0 && (
+          <div className="w-[160px] space-y-1.5">
+            <label htmlFor="etiqueta" className="text-xs font-medium text-muted-foreground">
+              Etiqueta
+            </label>
+            <select
+              id="etiqueta"
+              name="etiqueta"
+              defaultValue={etiqueta}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+            >
+              <option value="">— todas —</option>
+              {[...todasEtiquetas].map((et) => (
+                <option key={et} value={et}>{et}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div className="w-[180px] space-y-1.5">
+          <label htmlFor="seguimiento" className="text-xs font-medium text-muted-foreground">
+            Seguimiento
+          </label>
+          <select
+            id="seguimiento"
+            name="seguimiento"
+            defaultValue={seguimiento}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+          >
+            <option value="">— todos —</option>
+            <option value="vencido">⏰ Vencidos</option>
+            <option value="proximo">Próximos 7 días</option>
+          </select>
         </div>
         <Button type="submit" variant="outline">
           Filtrar
@@ -134,16 +178,40 @@ export default async function ClientesPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(clientes as Pick<Cliente, "id" | "nombre" | "apellido1" | "apellido2" | "es_empresa" | "email" | "telefono" | "nif" | "activo" | "created_at">[]).map((c) => {
+              {(clientes as Pick<Cliente, "id" | "nombre" | "apellido1" | "apellido2" | "es_empresa" | "email" | "telefono" | "nif" | "etiquetas" | "foto_url" | "proximo_seguimiento" | "activo" | "created_at">[]).map((c) => {
                 const nombreMostrar = nombreCompletoCliente(c);
                 const toggle = async () => { "use server"; await alternarActivo(c.id, !c.activo); };
                 const borrar = async () => { "use server"; await eliminarCliente(c.id); };
+                const seguimientoVencido = c.proximo_seguimiento && c.proximo_seguimiento <= new Date().toISOString().slice(0, 10);
                 return (
                   <TableRow key={c.id} className="group">
                     <TableCell>
-                      <Link href={`/app/clientes/${c.id}`} className="inline-flex items-center gap-2 font-semibold transition hover:text-foreground">
-                        {c.es_empresa ? <Building2 className="h-3.5 w-3.5 text-blue-600" /> : <User className="h-3.5 w-3.5 text-muted-foreground" />}
-                        {nombreMostrar}
+                      <Link href={`/app/clientes/${c.id}`} className="inline-flex items-center gap-2.5 font-semibold transition hover:text-foreground">
+                        {c.foto_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={c.foto_url} alt={nombreMostrar} className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-border" />
+                        ) : (
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted ring-1 ring-border">
+                            {c.es_empresa ? <Building2 className="h-3.5 w-3.5 text-blue-600" /> : <User className="h-3.5 w-3.5 text-muted-foreground" />}
+                          </span>
+                        )}
+                        <span className="flex flex-col">
+                          <span>{nombreMostrar}</span>
+                          {(c.etiquetas?.length ?? 0) > 0 && (
+                            <span className="mt-0.5 flex flex-wrap gap-1">
+                              {c.etiquetas!.slice(0, 3).map((et) => (
+                                <span key={et} className="rounded bg-blue-500/10 px-1.5 py-0 text-[10px] font-medium text-blue-700 dark:text-blue-400">
+                                  {et}
+                                </span>
+                              ))}
+                            </span>
+                          )}
+                          {seguimientoVencido && (
+                            <span className="mt-0.5 inline-flex w-fit items-center gap-1 rounded bg-amber-500/10 px-1.5 py-0 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                              ⏰ seguimiento {new Date(c.proximo_seguimiento!).toLocaleDateString("es-ES")}
+                            </span>
+                          )}
+                        </span>
                       </Link>
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">{c.nif ?? "—"}</TableCell>

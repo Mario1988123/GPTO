@@ -38,6 +38,12 @@ function parsePayload(formData: FormData) {
   const nif = String(formData.get("nif") ?? "").trim() || null;
   const notas = String(formData.get("notas") ?? "").trim() || null;
 
+  // Etiquetas: input "etiquetas" llega como string separado por comas.
+  const etiquetasRaw = String(formData.get("etiquetas") ?? "").trim();
+  const etiquetas = etiquetasRaw
+    ? etiquetasRaw.split(",").map((e) => e.trim()).filter(Boolean)
+    : [];
+
   return {
     nombre,
     apellido1,
@@ -53,6 +59,10 @@ function parsePayload(formData: FormData) {
     telefono,
     nif,
     notas,
+    etiquetas,
+    origen: String(formData.get("origen") ?? "").trim() || null,
+    foto_url: String(formData.get("foto_url") ?? "").trim() || null,
+    proximo_seguimiento: String(formData.get("proximo_seguimiento") ?? "").trim() || null,
     direccion: parseDireccion(formData),
   };
 }

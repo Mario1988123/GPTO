@@ -29,6 +29,10 @@ export function ClienteForm({ cliente, action, submitLabel }: Props) {
     contacto2_persona: cliente?.contacto2_persona ?? "",
     contacto2_telefono: cliente?.contacto2_telefono ?? "",
     contacto2_email: cliente?.contacto2_email ?? "",
+    etiquetas: (cliente?.etiquetas ?? []).join(", "),
+    origen: cliente?.origen ?? "",
+    foto_url: cliente?.foto_url ?? "",
+    proximo_seguimiento: cliente?.proximo_seguimiento ?? "",
     notas: cliente?.notas ?? "",
     direccion: (cliente?.direccion ?? {}) as Direccion,
   }));
@@ -164,6 +168,43 @@ export function ClienteForm({ cliente, action, submitLabel }: Props) {
           <Field label="Ciudad" name="direccion.ciudad" value={local.direccion.ciudad ?? ""} onChange={(v) => setLocal({ ...local, direccion: { ...local.direccion, ciudad: v } })} />
           <Field label="Provincia" name="direccion.provincia" value={local.direccion.provincia ?? ""} onChange={(v) => setLocal({ ...local, direccion: { ...local.direccion, provincia: v } })} />
           <Field label="País" name="direccion.pais" value={local.direccion.pais ?? ""} onChange={(v) => setLocal({ ...local, direccion: { ...local.direccion, pais: v } })} />
+        </div>
+      </section>
+
+      {/* CRM */}
+      <section className="space-y-4">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          CRM
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Etiquetas (separadas por comas)"
+            name="etiquetas"
+            value={local.etiquetas}
+            onChange={(v) => setLocal({ ...local, etiquetas: v })}
+          />
+          <Field
+            label="Origen / cómo nos conoció"
+            name="origen"
+            value={local.origen}
+            onChange={(v) => setLocal({ ...local, origen: v })}
+          />
+          <Field
+            label="URL avatar / logo"
+            name="foto_url"
+            value={local.foto_url}
+            onChange={(v) => setLocal({ ...local, foto_url: v })}
+          />
+          <div className="space-y-1.5">
+            <Label htmlFor="proximo_seguimiento">Próximo seguimiento</Label>
+            <Input
+              id="proximo_seguimiento"
+              name="proximo_seguimiento"
+              type="date"
+              value={local.proximo_seguimiento}
+              onChange={(e) => setLocal({ ...local, proximo_seguimiento: e.target.value })}
+            />
+          </div>
         </div>
       </section>
 
