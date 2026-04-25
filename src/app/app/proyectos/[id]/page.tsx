@@ -16,6 +16,7 @@ import {
   Pencil,
   User,
   Building2,
+  Truck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -67,11 +68,16 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
   const { data: proyecto } = await s.from("proyectos").select("*").eq("id", id).maybeSingle<Proyecto>();
   if (!proyecto) notFound();
 
-  const [{ data: cliente }, { data: armarios }, { data: estancias }] = await Promise.all([
+  const [{ data: cliente }, { data: armarios }, { data: estancias }, { count: numTableros }, { data: pedidosCorte }] = await Promise.all([
     s.from("clientes").select("id, nombre, apellido1, apellido2, es_empresa").eq("id", proyecto.cliente_id).maybeSingle<Pick<Cliente, "id" | "nombre" | "apellido1" | "apellido2" | "es_empresa">>(),
     s.from("armarios").select("*").eq("proyecto_id", id).order("orden").returns<Armario[]>(),
     s.from("estancias").select("id, nombre, tipo, orden, largo_mm, ancho_mm, alto_mm").eq("proyecto_id", id).order("orden"),
+    s.from("tableros_corte").select("id", { count: "exact", head: true }).eq("proyecto_id", id),
+    s.from("pedidos_tableros_corte").select("id, estado, fecha_entrega_prometida").eq("proyecto_id", id).order("created_at", { ascending: false }).limit(1),
   ]);
+
+  const hayNesting = (numTableros ?? 0) > 0;
+  const pedidoCorteActivo = (pedidosCorte ?? [])[0] as { id: string; estado: string; fecha_entrega_prometida: string | null } | undefined;
 
   const cerrado = esProyectoCerrado(proyecto);
   const hayArmarios = (armarios ?? []).length > 0;
@@ -178,6 +184,24 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
                   Corte tableros
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
+                {/* Pedido a proveedor de corte (solo si hay nesting ejecutado) */}
+                {hayNesting && !pedidoCorteActivo && (
+                  <form action={async () => { "use server"; const { crearPedidoCorteParaProyecto } = await import("../pedidos-tableros-actions"); await crearPedidoCorteParaProyecto(id); }}>
+                    <Button type="submit" variant="outline" size="sm">
+                      <Truck className="h-3.5 w-3.5" />
+                      Pedir corte
+                    </Button>
+                  </form>
+                )}
+                {pedidoCorteActivo && (
+                  <Link
+                    href={`/app/proyectos/${id}/pedido-corte/${pedidoCorteActivo.id}`}
+                    className={buttonVariants({ variant: "outline", size: "sm" })}
+                  >
+                    <Truck className="h-3.5 w-3.5" />
+                    Pedido corte ({pedidoCorteActivo.estado})
+                  </Link>
+                )}
               </>
             )}
             {!cerrado && (
