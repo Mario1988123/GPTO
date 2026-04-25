@@ -31,8 +31,10 @@ CREATE TABLE IF NOT EXISTS public.pedidos_tableros_corte (
 CREATE INDEX IF NOT EXISTS ptc_proyecto_idx ON public.pedidos_tableros_corte(proyecto_id);
 CREATE INDEX IF NOT EXISTS ptc_empresa_idx ON public.pedidos_tableros_corte(empresa_id);
 CREATE INDEX IF NOT EXISTS ptc_estado_idx ON public.pedidos_tableros_corte(empresa_id, estado);
+DROP TRIGGER IF EXISTS ptc_touch_updated_at ON public.pedidos_tableros_corte;
 CREATE TRIGGER ptc_touch_updated_at BEFORE UPDATE ON public.pedidos_tableros_corte
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+DROP TRIGGER IF EXISTS ptc_autofill_empresa ON public.pedidos_tableros_corte;
 CREATE TRIGGER ptc_autofill_empresa BEFORE INSERT ON public.pedidos_tableros_corte
   FOR EACH ROW EXECUTE FUNCTION public.autofill_empresa_id();
 

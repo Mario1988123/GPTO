@@ -40,8 +40,10 @@ CREATE TABLE IF NOT EXISTS public.puertas_paso_catalogo (
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS puertas_paso_empresa_idx ON public.puertas_paso_catalogo(empresa_id);
+DROP TRIGGER IF EXISTS puertas_paso_touch_updated_at ON public.puertas_paso_catalogo;
 CREATE TRIGGER puertas_paso_touch_updated_at BEFORE UPDATE ON public.puertas_paso_catalogo
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+DROP TRIGGER IF EXISTS puertas_paso_autofill_empresa ON public.puertas_paso_catalogo;
 CREATE TRIGGER puertas_paso_autofill_empresa BEFORE INSERT ON public.puertas_paso_catalogo
   FOR EACH ROW EXECUTE FUNCTION public.autofill_empresa_id();
 COMMENT ON TABLE public.puertas_paso_catalogo IS
@@ -68,8 +70,10 @@ CREATE TABLE IF NOT EXISTS public.suelos_catalogo (
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS suelos_empresa_idx ON public.suelos_catalogo(empresa_id);
+DROP TRIGGER IF EXISTS suelos_touch_updated_at ON public.suelos_catalogo;
 CREATE TRIGGER suelos_touch_updated_at BEFORE UPDATE ON public.suelos_catalogo
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+DROP TRIGGER IF EXISTS suelos_autofill_empresa ON public.suelos_catalogo;
 CREATE TRIGGER suelos_autofill_empresa BEFORE INSERT ON public.suelos_catalogo
   FOR EACH ROW EXECUTE FUNCTION public.autofill_empresa_id();
 
@@ -90,8 +94,10 @@ CREATE TABLE IF NOT EXISTS public.aislantes_catalogo (
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS aislantes_empresa_idx ON public.aislantes_catalogo(empresa_id);
+DROP TRIGGER IF EXISTS aislantes_touch_updated_at ON public.aislantes_catalogo;
 CREATE TRIGGER aislantes_touch_updated_at BEFORE UPDATE ON public.aislantes_catalogo
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+DROP TRIGGER IF EXISTS aislantes_autofill_empresa ON public.aislantes_catalogo;
 CREATE TRIGGER aislantes_autofill_empresa BEFORE INSERT ON public.aislantes_catalogo
   FOR EACH ROW EXECUTE FUNCTION public.autofill_empresa_id();
 
@@ -116,8 +122,10 @@ CREATE TABLE IF NOT EXISTS public.rodapies_catalogo (
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS rodapies_empresa_idx ON public.rodapies_catalogo(empresa_id);
+DROP TRIGGER IF EXISTS rodapies_touch_updated_at ON public.rodapies_catalogo;
 CREATE TRIGGER rodapies_touch_updated_at BEFORE UPDATE ON public.rodapies_catalogo
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+DROP TRIGGER IF EXISTS rodapies_autofill_empresa ON public.rodapies_catalogo;
 CREATE TRIGGER rodapies_autofill_empresa BEFORE INSERT ON public.rodapies_catalogo
   FOR EACH ROW EXECUTE FUNCTION public.autofill_empresa_id();
 

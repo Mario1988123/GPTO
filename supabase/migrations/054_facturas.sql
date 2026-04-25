@@ -26,8 +26,10 @@ CREATE TABLE IF NOT EXISTS public.series_facturacion (
   UNIQUE (empresa_id, codigo)
 );
 CREATE INDEX IF NOT EXISTS series_empresa_idx ON public.series_facturacion(empresa_id);
+DROP TRIGGER IF EXISTS series_touch_updated_at ON public.series_facturacion;
 CREATE TRIGGER series_touch_updated_at BEFORE UPDATE ON public.series_facturacion
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+DROP TRIGGER IF EXISTS series_autofill_empresa ON public.series_facturacion;
 CREATE TRIGGER series_autofill_empresa BEFORE INSERT ON public.series_facturacion
   FOR EACH ROW EXECUTE FUNCTION public.autofill_empresa_id();
 
@@ -94,8 +96,10 @@ CREATE INDEX IF NOT EXISTS facturas_estado_idx         ON public.facturas(empres
 CREATE INDEX IF NOT EXISTS facturas_fecha_emision_idx  ON public.facturas(empresa_id, fecha_emision DESC);
 CREATE INDEX IF NOT EXISTS facturas_no_pagadas_idx     ON public.facturas(empresa_id, fecha_vencimiento) WHERE pagada = FALSE AND estado IN ('emitida','enviada');
 
+DROP TRIGGER IF EXISTS facturas_touch_updated_at ON public.facturas;
 CREATE TRIGGER facturas_touch_updated_at BEFORE UPDATE ON public.facturas
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+DROP TRIGGER IF EXISTS facturas_autofill_empresa ON public.facturas;
 CREATE TRIGGER facturas_autofill_empresa BEFORE INSERT ON public.facturas
   FOR EACH ROW EXECUTE FUNCTION public.autofill_empresa_id();
 
@@ -117,6 +121,7 @@ CREATE TABLE IF NOT EXISTS public.factura_lineas (
 );
 CREATE INDEX IF NOT EXISTS fl_factura_idx ON public.factura_lineas(factura_id, orden);
 CREATE INDEX IF NOT EXISTS fl_empresa_idx ON public.factura_lineas(empresa_id);
+DROP TRIGGER IF EXISTS fl_autofill_empresa ON public.factura_lineas;
 CREATE TRIGGER fl_autofill_empresa BEFORE INSERT ON public.factura_lineas
   FOR EACH ROW EXECUTE FUNCTION public.autofill_empresa_id();
 
@@ -205,7 +210,6 @@ DROP TRIGGER IF EXISTS facturas_inmutable_trg ON public.facturas;
 CREATE TRIGGER facturas_inmutable_trg BEFORE UPDATE OR DELETE ON public.facturas
   FOR EACH ROW EXECUTE FUNCTION public.factura_inmutable();
 
-DROP TRIGGER IF EXISTS factura_lineas_inmutable_trg ON public.factura_lineas;
 CREATE OR REPLACE FUNCTION public.factura_lineas_inmutable() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE v_estado TEXT;
 BEGIN
@@ -217,6 +221,7 @@ BEGIN
   RETURN COALESCE(NEW, OLD);
 END;
 $$;
+DROP TRIGGER IF EXISTS factura_lineas_inmutable_trg ON public.factura_lineas;
 CREATE TRIGGER factura_lineas_inmutable_trg BEFORE INSERT OR UPDATE OR DELETE ON public.factura_lineas
   FOR EACH ROW EXECUTE FUNCTION public.factura_lineas_inmutable();
 

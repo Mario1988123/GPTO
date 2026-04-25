@@ -29,8 +29,10 @@ CREATE TABLE IF NOT EXISTS public.referencia_tablero_formatos (
 );
 CREATE INDEX IF NOT EXISTS rtf_ref_idx ON public.referencia_tablero_formatos(referencia_tablero_id);
 CREATE INDEX IF NOT EXISTS rtf_empresa_idx ON public.referencia_tablero_formatos(empresa_id);
+DROP TRIGGER IF EXISTS rtf_touch_updated_at ON public.referencia_tablero_formatos;
 CREATE TRIGGER rtf_touch_updated_at BEFORE UPDATE ON public.referencia_tablero_formatos
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+DROP TRIGGER IF EXISTS rtf_autofill_empresa ON public.referencia_tablero_formatos;
 CREATE TRIGGER rtf_autofill_empresa BEFORE INSERT ON public.referencia_tablero_formatos
   FOR EACH ROW EXECUTE FUNCTION public.autofill_empresa_id();
 

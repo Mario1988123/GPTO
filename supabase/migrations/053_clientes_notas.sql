@@ -25,8 +25,10 @@ CREATE INDEX IF NOT EXISTS ci_cliente_idx   ON public.cliente_interacciones(clie
 CREATE INDEX IF NOT EXISTS ci_empresa_idx   ON public.cliente_interacciones(empresa_id);
 CREATE INDEX IF NOT EXISTS ci_proyecto_idx  ON public.cliente_interacciones(proyecto_id);
 
+DROP TRIGGER IF EXISTS ci_touch_updated_at ON public.cliente_interacciones;
 CREATE TRIGGER ci_touch_updated_at BEFORE UPDATE ON public.cliente_interacciones
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+DROP TRIGGER IF EXISTS ci_autofill_empresa ON public.cliente_interacciones;
 CREATE TRIGGER ci_autofill_empresa BEFORE INSERT ON public.cliente_interacciones
   FOR EACH ROW EXECUTE FUNCTION public.autofill_empresa_id();
 

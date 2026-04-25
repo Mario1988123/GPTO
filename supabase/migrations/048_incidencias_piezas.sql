@@ -32,8 +32,10 @@ CREATE TABLE IF NOT EXISTS public.incidencias_piezas_recibidas (
 CREATE INDEX IF NOT EXISTS ipr_pieza_idx ON public.incidencias_piezas_recibidas(pieza_modulo_id);
 CREATE INDEX IF NOT EXISTS ipr_empresa_idx ON public.incidencias_piezas_recibidas(empresa_id);
 CREATE INDEX IF NOT EXISTS ipr_no_resuelto_idx ON public.incidencias_piezas_recibidas(empresa_id, resuelto) WHERE resuelto = FALSE;
+DROP TRIGGER IF EXISTS ipr_touch_updated_at ON public.incidencias_piezas_recibidas;
 CREATE TRIGGER ipr_touch_updated_at BEFORE UPDATE ON public.incidencias_piezas_recibidas
   FOR EACH ROW EXECUTE FUNCTION public.touch_updated_at();
+DROP TRIGGER IF EXISTS ipr_autofill_empresa ON public.incidencias_piezas_recibidas;
 CREATE TRIGGER ipr_autofill_empresa BEFORE INSERT ON public.incidencias_piezas_recibidas
   FOR EACH ROW EXECUTE FUNCTION public.autofill_empresa_id();
 
