@@ -97,6 +97,15 @@ export default async function ConfiguradorArmarioPage({
   const { data: empCfg } = await s.from("empresas").select("config_empresa").limit(1).maybeSingle<{ config_empresa: Record<string, number> }>();
   const tabUtilAltoMm = Number(empCfg?.config_empresa?.tablero_util_alto_cm ?? 120) * 10;
 
+  // Tiradores del catálogo para el selector en los subelementos (cajones y puertas)
+  const { data: tiradoresRaw } = await s
+    .from("herrajes")
+    .select("id, nombre")
+    .eq("activo", true)
+    .eq("tipo", "tirador")
+    .order("nombre");
+  const tiradores = (tiradoresRaw ?? []).map((t) => ({ id: t.id as string, nombre: t.nombre as string }));
+
   const anchoOcupado = (modulos ?? []).reduce((acc, m) => acc + m.ancho_mm, 0);
   const anchoLibre = armario.ancho_total_mm - anchoOcupado;
 
@@ -265,6 +274,7 @@ export default async function ConfiguradorArmarioPage({
               "use server";
               await actualizarConfiguracionModulo(proyectoId, armarioId, moduloId, fd);
             }}
+            tiradores={tiradores}
           />
         )}
       </section>

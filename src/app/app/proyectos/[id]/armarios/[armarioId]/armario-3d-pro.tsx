@@ -42,6 +42,9 @@ type Props = {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onMove: (id: string, x_mm: number, y_mm: number) => Promise<void>;
+  // Override global: si se pasa, fuerza mostrar/ocultar puertas en todos los módulos.
+  // null (default) = respetar la config individual de cada módulo.
+  mostrarPuertasOverride?: boolean | null;
 };
 
 const COLOR_SEL = "#f97316";
@@ -60,6 +63,7 @@ export function ArmarioScene({
   selectedId,
   onSelect,
   onMove,
+  mostrarPuertasOverride = null,
   showFloor = true,
   showControls = true,
 }: Props & { showFloor?: boolean; showControls?: boolean }) {
@@ -105,25 +109,31 @@ export function ArmarioScene({
         <Edges color="#27272a" lineWidth={0.8} />
       </mesh>
 
-      {modulos.map((m) => (
-        <ModuloMesh
-          key={m.id}
-          modulo={m}
-          colorAcabado={acab.base}
-          k={k}
-          H={H}
-          D={D}
-          isSelected={selectedId === m.id}
-          onClick={() => onSelect(m.id === selectedId ? null : m.id)}
-          onMoveEnd={(xmm, ymm) => {
-            start(() => {
-              onMove(m.id, xmm, ymm).catch((err) => {
-                toast.error(err instanceof Error ? err.message : "Error");
+      {modulos.map((m) => {
+        // Aplicar override global si se ha pasado (checkbox del editor).
+        const modEffective = mostrarPuertasOverride == null
+          ? m
+          : { ...m, mostrar_puertas: mostrarPuertasOverride };
+        return (
+          <ModuloMesh
+            key={m.id}
+            modulo={modEffective}
+            colorAcabado={acab.base}
+            k={k}
+            H={H}
+            D={D}
+            isSelected={selectedId === m.id}
+            onClick={() => onSelect(m.id === selectedId ? null : m.id)}
+            onMoveEnd={(xmm, ymm) => {
+              start(() => {
+                onMove(m.id, xmm, ymm).catch((err) => {
+                  toast.error(err instanceof Error ? err.message : "Error");
+                });
               });
-            });
-          }}
-        />
-      ))}
+            }}
+          />
+        );
+      })}
 
       {showControls ? (
         <OrbitControls

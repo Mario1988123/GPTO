@@ -26,35 +26,52 @@ function loadEnv() {
 
 // Piezas base comunes: 2 laterales + suelo + techo + trasera.
 // Convención: costados de pie, suelo+techo encastrados entre costados, trasera encastrada al fondo.
-// - Lateral: alto × (fondo - grosor_trasera).  ajuste_ancho_mm=-10 asume trasera 10mm.
-//   (Mejora futura: campo ajuste_ancho_trasera_grosores que aplique trasera_grosor_mm del módulo).
-// - Suelo/Techo: (ancho - 2×grosor) × (fondo - grosor_trasera).
-// - Trasera: (ancho - 2×grosor) × (alto - 2×grosor) × grosor_trasera.
+// Fórmulas (con migración 046 aplicada):
+//   Lateral:  largo = alto                            ancho = fondo − 1×grosor_trasera
+//   Suelo:    largo = ancho − 2×grosor_tableros       ancho = fondo − 1×grosor_trasera
+//   Techo:    igual que suelo
+//   Trasera:  largo = ancho − 2×grosor_tableros       ancho = alto  − 2×grosor_tableros
+// Los ajustes _trasera_grosores aplican trasera_grosor_mm del módulo (default 10mm si null).
 const PIEZAS_BASE = [
-  { nombre: "Lateral", cantidad: 2, orden: 0, fuente_largo: "alto", ajuste_largo_mm: 0, ajuste_largo_grosores: 0, fuente_ancho: "fondo", ajuste_ancho_mm: -10, ajuste_ancho_grosores: 0, lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
-  { nombre: "Suelo", cantidad: 1, orden: 1, fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, fuente_ancho: "fondo", ajuste_ancho_mm: -10, ajuste_ancho_grosores: 0, lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
-  { nombre: "Techo", cantidad: 1, orden: 2, fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, fuente_ancho: "fondo", ajuste_ancho_mm: -10, ajuste_ancho_grosores: 0, lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
-  { nombre: "Trasera", cantidad: 1, orden: 3, fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, fuente_ancho: "alto", ajuste_ancho_mm: 0, ajuste_ancho_grosores: -2, lados_con_canto: "ninguno", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null, es_trasera: true },
+  { nombre: "Lateral", cantidad: 2, orden: 0,
+    fuente_largo: "alto",  ajuste_largo_mm: 0, ajuste_largo_grosores: 0, ajuste_largo_trasera_grosores: 0,
+    fuente_ancho: "fondo", ajuste_ancho_mm: 0, ajuste_ancho_grosores: 0, ajuste_ancho_trasera_grosores: -1,
+    lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
+  { nombre: "Suelo", cantidad: 1, orden: 1,
+    fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, ajuste_largo_trasera_grosores: 0,
+    fuente_ancho: "fondo", ajuste_ancho_mm: 0, ajuste_ancho_grosores: 0, ajuste_ancho_trasera_grosores: -1,
+    lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
+  { nombre: "Techo", cantidad: 1, orden: 2,
+    fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, ajuste_largo_trasera_grosores: 0,
+    fuente_ancho: "fondo", ajuste_ancho_mm: 0, ajuste_ancho_grosores: 0, ajuste_ancho_trasera_grosores: -1,
+    lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null },
+  { nombre: "Trasera", cantidad: 1, orden: 3,
+    fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2, ajuste_largo_trasera_grosores: 0,
+    fuente_ancho: "alto",  ajuste_ancho_mm: 0, ajuste_ancho_grosores: -2, ajuste_ancho_trasera_grosores: 0,
+    lados_con_canto: "ninguno", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null, es_trasera: true },
 ];
 
 const piezaBalda = (orden) => ({
   nombre: "Balda", cantidad: 1, orden,
-  fuente_largo: "ancho", ajuste_largo_mm: 0, ajuste_largo_grosores: -2,
-  fuente_ancho: "fondo", ajuste_ancho_mm: -10, ajuste_ancho_grosores: 0,
+  // Balda: ancho entre costados (ancho - 2×grosor), fondo = fondo_módulo − 1×grosor_trasera − 20mm aire trasero.
+  fuente_largo: "ancho", ajuste_largo_mm: 0,   ajuste_largo_grosores: -2, ajuste_largo_trasera_grosores: 0,
+  fuente_ancho: "fondo", ajuste_ancho_mm: -20, ajuste_ancho_grosores: 0,  ajuste_ancho_trasera_grosores: -1,
   lados_con_canto: "1", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null,
 });
 
 const piezaFrontalCajon = (orden) => ({
   nombre: "Frontal cajón", cantidad: 1, orden,
-  fuente_largo: "ancho", ajuste_largo_mm: -3, ajuste_largo_grosores: -2,
-  fuente_ancho: "fijo", ajuste_ancho_mm: 0, ajuste_ancho_grosores: 0,
+  // Frontal cajón: ancho — 3mm aire — 2×grosor (si van entre costados sin retranqueo), alto fijo 200mm por defecto.
+  fuente_largo: "ancho", ajuste_largo_mm: -3, ajuste_largo_grosores: -2, ajuste_largo_trasera_grosores: 0,
+  fuente_ancho: "fijo",  ajuste_ancho_mm: 0,  ajuste_ancho_grosores: 0,  ajuste_ancho_trasera_grosores: 0,
   lados_con_canto: "4", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: 200,
 });
 
 const piezaPuerta = (orden) => ({
   nombre: "Puerta", cantidad: 1, orden,
-  fuente_largo: "ancho", ajuste_largo_mm: -3, ajuste_largo_grosores: -2,
-  fuente_ancho: "alto", ajuste_ancho_mm: -3, ajuste_ancho_grosores: -2,
+  // Puerta de armario: ancho − 3mm − 2×grosor, alto − 3mm − 2×grosor (asume puerta por dentro de los costados).
+  fuente_largo: "ancho", ajuste_largo_mm: -3, ajuste_largo_grosores: -2, ajuste_largo_trasera_grosores: 0,
+  fuente_ancho: "alto",  ajuste_ancho_mm: -3, ajuste_ancho_grosores: -2, ajuste_ancho_trasera_grosores: 0,
   lados_con_canto: "4", valor_largo_fijo_mm: null, valor_ancho_fijo_mm: null,
 });
 
@@ -169,6 +186,65 @@ const TIPOS_ESTANDAR = [
     ancho: 600, alto: 2100, fondo: 560, horas: 3.2,
     piezas: [...PIEZAS_BASE, piezaPuerta(4), piezaPuerta(5), piezaBalda(6), piezaBalda(7), piezaBalda(8)],
   },
+  // ================== VESTIDOR / ARMARIO (Capa 22) ==================
+  {
+    nombre: "Módulo colgador doble (barra + barra)", categoria: "vestidor",
+    ancho: 1000, alto: 2000, fondo: 600, horas: 2.2,
+    piezas: [...PIEZAS_BASE, piezaBalda(4)],
+  },
+  {
+    nombre: "Módulo 5 cajones bajos", categoria: "vestidor",
+    ancho: 600, alto: 1200, fondo: 500, horas: 3.5,
+    piezas: [...PIEZAS_BASE, piezaFrontalCajon(4), piezaFrontalCajon(5), piezaFrontalCajon(6), piezaFrontalCajon(7), piezaFrontalCajon(8)],
+  },
+  {
+    nombre: "Módulo baldas pantaloneros", categoria: "vestidor",
+    ancho: 600, alto: 1000, fondo: 500, horas: 2.5,
+    piezas: [...PIEZAS_BASE, piezaBalda(4), piezaBalda(5), piezaBalda(6)],
+  },
+  // ================== DORMITORIO ==================
+  {
+    nombre: "Cabecero 160cm", categoria: "dormitorio",
+    ancho: 1600, alto: 1000, fondo: 80, horas: 2,
+    piezas: [...PIEZAS_BASE],
+  },
+  {
+    nombre: "Mesilla 2 cajones", categoria: "dormitorio",
+    ancho: 450, alto: 500, fondo: 400, horas: 2,
+    piezas: [...PIEZAS_BASE, piezaFrontalCajon(4), piezaFrontalCajon(5)],
+  },
+  {
+    nombre: "Cómoda 4 cajones 100×90", categoria: "dormitorio",
+    ancho: 1000, alto: 900, fondo: 500, horas: 3.5,
+    piezas: [...PIEZAS_BASE, piezaFrontalCajon(4), piezaFrontalCajon(5), piezaFrontalCajon(6), piezaFrontalCajon(7)],
+  },
+  // ================== SALÓN ==================
+  {
+    nombre: "Mueble TV 180×50", categoria: "salon",
+    ancho: 1800, alto: 500, fondo: 400, horas: 3,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4), piezaPuerta(5)],
+  },
+  {
+    nombre: "Estantería salón 80×200", categoria: "salon",
+    ancho: 800, alto: 2000, fondo: 350, horas: 3.5,
+    piezas: [...PIEZAS_BASE, piezaBalda(4), piezaBalda(5), piezaBalda(6), piezaBalda(7)],
+  },
+  {
+    nombre: "Aparador 120×80 (2 puertas + 1 cajón)", categoria: "salon",
+    ancho: 1200, alto: 800, fondo: 450, horas: 3.5,
+    piezas: [...PIEZAS_BASE, piezaPuerta(4), piezaPuerta(5), piezaFrontalCajon(6)],
+  },
+  // ================== BAÑO ==================
+  {
+    nombre: "Mueble lavabo 60cm (2 cajones)", categoria: "bano",
+    ancho: 600, alto: 500, fondo: 450, horas: 2.5,
+    piezas: [...PIEZAS_BASE, piezaFrontalCajon(4), piezaFrontalCajon(5)],
+  },
+  {
+    nombre: "Mueble lavabo 80cm suspendido (1 cajón)", categoria: "bano",
+    ancho: 800, alto: 400, fondo: 450, horas: 2.5,
+    piezas: [...PIEZAS_BASE, piezaFrontalCajon(4)],
+  },
   {
     nombre: "Hueco libre", categoria: "otro",
     ancho: 900, alto: 2000, fondo: 600, horas: 2,
@@ -225,6 +301,8 @@ async function main() {
         referencia_tablero_id: null,
         notas: null,
         es_trasera: p.es_trasera ?? false,
+        ajuste_largo_trasera_grosores: p.ajuste_largo_trasera_grosores ?? 0,
+        ajuste_ancho_trasera_grosores: p.ajuste_ancho_trasera_grosores ?? 0,
       }));
       const insP = await sb.from("tipo_modulo_piezas").insert(rows);
       if (insP.error) console.error("  err piezas", insP.error.message);

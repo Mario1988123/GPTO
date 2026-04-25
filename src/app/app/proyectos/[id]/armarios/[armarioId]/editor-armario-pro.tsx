@@ -33,6 +33,7 @@ type Props = {
     alturasMm: number[] | null,
   ) => Promise<void>;
   onActualizarConfigModulo: (moduloId: string, fd: FormData) => Promise<void>;
+  tiradores?: { id: string; nombre: string }[];
 };
 
 const TIPOS_POR_GRUPO: Record<string, TipoSubelemento[]> = {
@@ -69,11 +70,14 @@ export function EditorArmarioPro(props: Props) {
     onEliminarSubelemento,
     onGenerarCajones,
     onActualizarConfigModulo,
+    tiradores = [],
   } = props;
 
   const [selectedId, setSelectedId] = useState<string | null>(
     modulos[0]?.id ?? null,
   );
+  // Override global de puertas: null = respetar config individual, true/false = forzar.
+  const [mostrarPuertasGlobal, setMostrarPuertasGlobal] = useState<boolean | null>(null);
   const [pending, start] = useTransition();
 
   const selected = modulos.find((m) => m.id === selectedId) ?? null;
@@ -92,6 +96,20 @@ export function EditorArmarioPro(props: Props) {
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
       <div>
+        {/* Toolbar del 3D */}
+        <div className="mb-2 flex flex-wrap items-center justify-end gap-2">
+          <div className="inline-flex gap-1 rounded-md border border-border bg-muted/40 p-0.5 text-[11px]">
+            <button type="button" onClick={() => setMostrarPuertasGlobal(null)} className={`rounded px-2 py-1 font-medium transition ${mostrarPuertasGlobal === null ? "bg-background shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground"}`}>
+              Individual
+            </button>
+            <button type="button" onClick={() => setMostrarPuertasGlobal(true)} className={`rounded px-2 py-1 font-medium transition ${mostrarPuertasGlobal === true ? "bg-background shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground"}`}>
+              Ver puertas
+            </button>
+            <button type="button" onClick={() => setMostrarPuertasGlobal(false)} className={`rounded px-2 py-1 font-medium transition ${mostrarPuertasGlobal === false ? "bg-background shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground"}`}>
+              Sin puertas
+            </button>
+          </div>
+        </div>
         <Armario3DPro
           armario_ancho_mm={armario_ancho_mm}
           armario_alto_mm={armario_alto_mm}
@@ -99,6 +117,7 @@ export function EditorArmarioPro(props: Props) {
           tipo_instalacion={tipo_instalacion}
           margen_tapeta_mm={margen_tapeta_mm}
           modulos={modulos}
+          mostrarPuertasOverride={mostrarPuertasGlobal}
           selectedId={selectedId}
           onSelect={setSelectedId}
           onMove={async (id, x, y) => {
@@ -158,6 +177,7 @@ export function EditorArmarioPro(props: Props) {
             <SubelementosPanel
               modulo={selected}
               pending={pending}
+              tiradores={tiradores}
               onCreate={(fd) =>
                 runServer(() => onCrearSubelemento(selected.id, fd), "Subelemento añadido")
               }
@@ -280,17 +300,21 @@ function SubelementoEditor({
   s,
   meta,
   pending,
+  tiradores = [],
   onSave,
   onDelete,
 }: {
   s: ModuloSubelemento;
   meta: { label: string; color: string } | undefined;
   pending: boolean;
+  tiradores?: { id: string; nombre: string }[];
   onSave: (fd: FormData) => void;
   onDelete: () => void;
 }) {
   const [esPropio, setEsPropio] = useState(s.es_propio ?? true);
   const esCajon = s.tipo === "cajon";
+  const llevaTirador = esCajon || s.tipo === "puerta_abatible" || s.tipo === "puerta_corredera" || s.tipo === "puerta_plegable";
+  const tiradorActual = (s.config as { tirador?: string } | null)?.tirador ?? "";
 
   return (
     <form
@@ -440,6 +464,32 @@ function SubelementoEditor({
           ) : null}
         </div>
       ) : null}
+
+      {/* Selector de tirador (cajones y puertas) */}
+      {llevaTirador && (
+        <label className="block space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Tirador
+          </span>
+          <select
+            name="config_tirador"
+            defaultValue={tiradorActual}
+            className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 text-xs shadow-xs"
+          >
+            <option value="">— sin tirador —</option>
+            {tiradores.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.nombre}
+              </option>
+            ))}
+          </select>
+          <span className="text-[10px] text-muted-foreground">
+            {tiradores.length === 0 ? (
+              <>Crea tiradores en <a href="/app/catalogo/herrajes" className="underline">catálogo · herrajes</a>.</>
+            ) : "Se usará al explosionar piezas y en el presupuesto."}
+          </span>
+        </label>
+      )}
 
       <div className="flex items-center gap-2">
         <Button type="submit" size="xs" disabled={pending}>
@@ -779,12 +829,14 @@ function LedControl({
 function SubelementosPanel({
   modulo,
   pending,
+  tiradores = [],
   onCreate,
   onUpdate,
   onDelete,
 }: {
   modulo: ModuloPro;
   pending: boolean;
+  tiradores?: { id: string; nombre: string }[];
   onCreate: (fd: FormData) => void;
   onUpdate: (subId: string, fd: FormData) => void;
   onDelete: (subId: string) => void;
@@ -838,6 +890,7 @@ function SubelementosPanel({
                     s={s}
                     meta={meta}
                     pending={pending}
+                    tiradores={tiradores}
                     onSave={(fd) => {
                       onUpdate(s.id, fd);
                       setEditingId(null);

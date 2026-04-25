@@ -92,11 +92,32 @@ export async function ejecutarNesting(proyectoId: string) {
   let totalColocadas = 0;
   let totalRecortes = 0;
 
-  // 5. Para cada grupo, empacar.
+  // 5. Para cada grupo, empacar en memoria. Luego hacemos los inserts en batch
+  //    (muchísimo más rápido que 1 insert por tablero / por pieza — cada round-trip
+  //    a Supabase cuesta 50-200ms).
+  type TableroPreInsert = {
+    proyecto_id: string;
+    referencia_tablero_id: string;
+    numero: number;
+    ancho_mm: number;
+    alto_mm: number;
+    area_ocupada_mm2: number;
+    __piezas: {
+      pieza_modulo_id: string;
+      ocurrencia: number;
+      x_mm: number;
+      y_mm: number;
+      largo_mm: number;
+      ancho_mm: number;
+      rotada: boolean;
+    }[];
+    __recortes: { largo_mm: number; ancho_mm: number }[];
+  };
+
+  const tablerosParaInsert: TableroPreInsert[] = [];
+
   for (const [refId, listaPiezas] of grupos.entries()) {
-    // Expandir cantidad → ocurrencias.
     const input: PiezaInput[] = [];
-    const expandidas: { pieza_id: string; ocurrencia: number; w: number; h: number; canRotate: boolean }[] = [];
     for (const p of listaPiezas) {
       for (let occ = 1; occ <= p.cantidad; occ++) {
         input.push({
@@ -105,73 +126,85 @@ export async function ejecutarNesting(proyectoId: string) {
           h_mm: p.ancho_mm,
           canRotate: !p.respeta_veta,
         });
-        expandidas.push({
-          pieza_id: p.id,
-          ocurrencia: occ,
-          w: p.largo_mm,
-          h: p.ancho_mm,
-          canRotate: !p.respeta_veta,
-        });
       }
     }
 
     const { tableros } = empacarMultiTablero(input, tableroUtilLargo, tableroUtilAncho, kerf);
 
     for (const res of tableros) {
-      // 5a. Crear tablero_corte
       const areaOcupada = res.colocadas.reduce((acc, c) => acc + c.w * c.h, 0);
-      const { data: tab, error: tabErr } = await s
-        .from("tableros_corte")
-        .insert({
-          proyecto_id: proyectoId,
-          referencia_tablero_id: refId,
-          numero: numeroGlobal++,
-          ancho_mm: tableroUtilLargo,
-          alto_mm: tableroUtilAncho,
-          area_ocupada_mm2: areaOcupada,
-        })
-        .select("id")
-        .single();
-      if (tabErr || !tab) {
-        redirect(`/app/proyectos/${proyectoId}/nesting?error=${encodeURIComponent(tabErr?.message ?? "Error creando tablero")}`);
-      }
-
-      // 5b. Insertar piezas colocadas
-      const rows = res.colocadas.map((c) => {
-        const [pieza_id, occStr] = c.key.split("#");
-        return {
-          tablero_corte_id: tab.id,
-          pieza_modulo_id: pieza_id,
-          ocurrencia: Number.parseInt(occStr, 10),
-          x_mm: c.x,
-          y_mm: c.y,
-          largo_mm: c.rotada ? c.h : c.w,  // sin rotar: w=largo, h=ancho
-          ancho_mm: c.rotada ? c.w : c.h,
-          rotada: c.rotada,
-        };
-      });
-      if (rows.length > 0) {
-        const { error: inErr } = await s.from("piezas_en_tablero").insert(rows);
-        if (inErr) {
-          redirect(`/app/proyectos/${proyectoId}/nesting?error=${encodeURIComponent(inErr.message)}`);
-        }
-      }
-      totalColocadas += rows.length;
-
-      // 5c. Recortes residuales (estado pendiente, esperan validación del operario)
-      const recortesRows = res.recortes.map((r) => ({
+      tablerosParaInsert.push({
+        proyecto_id: proyectoId,
         referencia_tablero_id: refId,
-        origen_tablero_id: tab.id,
-        largo_mm: Math.floor(r.w),
-        ancho_mm: Math.floor(r.h),
-      }));
-      if (recortesRows.length > 0) {
-        const { error: rErr } = await s.from("recortes").insert(recortesRows);
-        if (rErr) {
-          redirect(`/app/proyectos/${proyectoId}/nesting?error=${encodeURIComponent(rErr.message)}`);
-        }
+        numero: numeroGlobal++,
+        ancho_mm: tableroUtilLargo,
+        alto_mm: tableroUtilAncho,
+        area_ocupada_mm2: areaOcupada,
+        __piezas: res.colocadas.map((c) => {
+          const [pieza_id, occStr] = c.key.split("#");
+          return {
+            pieza_modulo_id: pieza_id,
+            ocurrencia: Number.parseInt(occStr, 10),
+            x_mm: c.x,
+            y_mm: c.y,
+            largo_mm: c.rotada ? c.h : c.w,
+            ancho_mm: c.rotada ? c.w : c.h,
+            rotada: c.rotada,
+          };
+        }),
+        __recortes: res.recortes.map((r) => ({
+          largo_mm: Math.floor(r.w),
+          ancho_mm: Math.floor(r.h),
+        })),
+      });
+    }
+  }
+
+  // 5.BATCH — un solo insert para los tableros, luego uno para todas las piezas,
+  //           y uno para todos los recortes. Reduce de O(tableros + piezas) a O(3).
+  if (tablerosParaInsert.length > 0) {
+    const rowsTableros = tablerosParaInsert.map(({ __piezas: _p, __recortes: _r, ...rest }) => {
+      void _p; void _r;
+      return rest;
+    });
+    const { data: tablerosInsertados, error: tabErr } = await s
+      .from("tableros_corte")
+      .insert(rowsTableros)
+      .select("id, numero");
+    if (tabErr || !tablerosInsertados) {
+      redirect(`/app/proyectos/${proyectoId}/nesting?error=${encodeURIComponent(tabErr?.message ?? "Error creando tableros")}`);
+    }
+
+    // Mapear numero → id recién creado.
+    const byNumero = new Map<number, string>();
+    for (const t of tablerosInsertados) byNumero.set(t.numero as number, t.id as string);
+
+    // Piezas en tablero: todas en un solo insert.
+    const todasPiezas: Record<string, unknown>[] = [];
+    const todosRecortes: Record<string, unknown>[] = [];
+    for (const t of tablerosParaInsert) {
+      const tabId = byNumero.get(t.numero);
+      if (!tabId) continue;
+      for (const p of t.__piezas) todasPiezas.push({ tablero_corte_id: tabId, ...p });
+      for (const r of t.__recortes) {
+        todosRecortes.push({
+          referencia_tablero_id: t.referencia_tablero_id,
+          origen_tablero_id: tabId,
+          largo_mm: r.largo_mm,
+          ancho_mm: r.ancho_mm,
+        });
       }
-      totalRecortes += recortesRows.length;
+    }
+
+    if (todasPiezas.length > 0) {
+      const { error: pErr } = await s.from("piezas_en_tablero").insert(todasPiezas);
+      if (pErr) redirect(`/app/proyectos/${proyectoId}/nesting?error=${encodeURIComponent(pErr.message)}`);
+      totalColocadas += todasPiezas.length;
+    }
+    if (todosRecortes.length > 0) {
+      const { error: rErr } = await s.from("recortes").insert(todosRecortes);
+      if (rErr) redirect(`/app/proyectos/${proyectoId}/nesting?error=${encodeURIComponent(rErr.message)}`);
+      totalRecortes += todosRecortes.length;
     }
   }
 
