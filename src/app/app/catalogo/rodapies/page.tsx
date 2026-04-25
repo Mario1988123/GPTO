@@ -86,6 +86,7 @@ export default async function RodapiesPage() {
           <div className="space-y-1.5"><Label htmlFor="referencia_proveedor">Ref. proveedor</Label><Input id="referencia_proveedor" name="referencia_proveedor" /></div>
           <div className="space-y-1.5"><Label htmlFor="precio_coste_ml">Coste €/ml</Label><Input id="precio_coste_ml" name="precio_coste_ml" type="number" step="0.01" /></div>
           <div className="space-y-1.5"><Label htmlFor="precio_pvp_ml">PVP €/ml</Label><Input id="precio_pvp_ml" name="precio_pvp_ml" type="number" step="0.01" /></div>
+          <div className="sm:col-span-6 space-y-1.5"><Label htmlFor="foto_url">URL fotografía</Label><Input id="foto_url" name="foto_url" placeholder="https://…" /></div>
           <div className="sm:col-span-6"><Button type="submit"><Plus className="h-4 w-4" /> Añadir rodapié</Button></div>
         </form>
       </section>

@@ -36,6 +36,11 @@ export function HerrajeForm({
           ]}
         />
         <Field label="Ref. proveedor" name="referencia_proveedor" defaultValue={herraje?.referencia_proveedor} />
+        <Field
+          label="URL fotografía"
+          name="foto_url"
+          defaultValue={(herraje as { foto_url?: string | null } | null)?.foto_url ?? ""}
+        />
       </div>
       <Textarea label="Notas" name="notas" defaultValue={herraje?.notas} />
       <SubmitButton label={submitLabel} />

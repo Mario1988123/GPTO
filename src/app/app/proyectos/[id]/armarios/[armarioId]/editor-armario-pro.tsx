@@ -11,6 +11,7 @@ import {
 } from "@/lib/tipos/proyectos";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PickerTrigger } from "@/components/picker-modal";
 
 type Props = {
   proyectoId: string;
@@ -33,7 +34,7 @@ type Props = {
     alturasMm: number[] | null,
   ) => Promise<void>;
   onActualizarConfigModulo: (moduloId: string, fd: FormData) => Promise<void>;
-  tiradores?: { id: string; nombre: string }[];
+  tiradores?: { id: string; nombre: string; foto_url?: string | null; precio_unidad?: number | null }[];
 };
 
 const TIPOS_POR_GRUPO: Record<string, TipoSubelemento[]> = {
@@ -307,14 +308,15 @@ function SubelementoEditor({
   s: ModuloSubelemento;
   meta: { label: string; color: string } | undefined;
   pending: boolean;
-  tiradores?: { id: string; nombre: string }[];
+  tiradores?: { id: string; nombre: string; foto_url?: string | null; precio_unidad?: number | null }[];
   onSave: (fd: FormData) => void;
   onDelete: () => void;
 }) {
   const [esPropio, setEsPropio] = useState(s.es_propio ?? true);
   const esCajon = s.tipo === "cajon";
   const llevaTirador = esCajon || s.tipo === "puerta_abatible" || s.tipo === "puerta_corredera" || s.tipo === "puerta_plegable";
-  const tiradorActual = (s.config as { tirador?: string } | null)?.tirador ?? "";
+  const tiradorActualInicial = (s.config as { tirador?: string } | null)?.tirador ?? "";
+  const [tiradorId, setTiradorId] = useState<string>(tiradorActualInicial);
 
   return (
     <form
@@ -465,30 +467,31 @@ function SubelementoEditor({
         </div>
       ) : null}
 
-      {/* Selector de tirador (cajones y puertas) */}
+      {/* Selector de tirador (cajones y puertas) — modal con búsqueda + miniatura */}
       {llevaTirador && (
-        <label className="block space-y-1">
+        <div className="block space-y-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Tirador
           </span>
-          <select
+          <PickerTrigger
             name="config_tirador"
-            defaultValue={tiradorActual}
-            className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 text-xs shadow-xs"
-          >
-            <option value="">— sin tirador —</option>
-            {tiradores.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.nombre}
-              </option>
-            ))}
-          </select>
+            value={tiradorId}
+            onChange={setTiradorId}
+            placeholder="— sin tirador —"
+            title="Elegir tirador"
+            items={tiradores.map((t) => ({
+              id: t.id,
+              nombre: t.nombre,
+              foto_url: t.foto_url ?? null,
+              meta: t.precio_unidad != null ? `${Number(t.precio_unidad).toFixed(2)} €/ud` : undefined,
+            }))}
+          />
           <span className="text-[10px] text-muted-foreground">
             {tiradores.length === 0 ? (
               <>Crea tiradores en <a href="/app/catalogo/herrajes" className="underline">catálogo · herrajes</a>.</>
             ) : "Se usará al explosionar piezas y en el presupuesto."}
           </span>
-        </label>
+        </div>
       )}
 
       <div className="flex items-center gap-2">
@@ -836,7 +839,7 @@ function SubelementosPanel({
 }: {
   modulo: ModuloPro;
   pending: boolean;
-  tiradores?: { id: string; nombre: string }[];
+  tiradores?: { id: string; nombre: string; foto_url?: string | null; precio_unidad?: number | null }[];
   onCreate: (fd: FormData) => void;
   onUpdate: (subId: string, fd: FormData) => void;
   onDelete: (subId: string) => void;

@@ -46,6 +46,7 @@ function payloadPuerta(fd: FormData) {
     referencia_proveedor: str(fd, "referencia_proveedor"),
     precio_coste_eur: num(fd, "precio_coste_eur", 0) ?? 0,
     precio_pvp_eur: num(fd, "precio_pvp_eur", 0) ?? 0,
+    foto_url: str(fd, "foto_url"),
     notas: str(fd, "notas"),
   };
 }
@@ -90,6 +91,7 @@ function payloadSuelo(fd: FormData) {
     referencia_proveedor: str(fd, "referencia_proveedor"),
     precio_coste_m2: num(fd, "precio_coste_m2", 0) ?? 0,
     precio_pvp_m2: num(fd, "precio_pvp_m2", 0) ?? 0,
+    foto_url: str(fd, "foto_url"),
     notas: str(fd, "notas"),
   };
 }
@@ -134,6 +136,7 @@ function payloadRodapie(fd: FormData) {
     referencia_proveedor: str(fd, "referencia_proveedor"),
     precio_coste_ml: num(fd, "precio_coste_ml", 0) ?? 0,
     precio_pvp_ml: num(fd, "precio_pvp_ml", 0) ?? 0,
+    foto_url: str(fd, "foto_url"),
     notas: str(fd, "notas"),
   };
 }

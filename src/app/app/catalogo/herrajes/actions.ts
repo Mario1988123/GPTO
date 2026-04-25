@@ -31,6 +31,7 @@ function payload(fd: FormData) {
     proveedor_id: prov && prov !== NINGUNA ? prov : null,
     precio_unidad,
     stock_disponible,
+    foto_url: String(fd.get("foto_url") ?? "").trim() || null,
     notas: String(fd.get("notas") ?? "").trim() || null,
   };
 }

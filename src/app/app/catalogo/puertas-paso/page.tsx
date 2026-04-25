@@ -106,6 +106,7 @@ export default async function PuertasPasoPage() {
           <div className="space-y-1.5"><Label htmlFor="referencia_proveedor">Ref. proveedor</Label><Input id="referencia_proveedor" name="referencia_proveedor" /></div>
           <div className="space-y-1.5"><Label htmlFor="precio_coste_eur">Coste €</Label><Input id="precio_coste_eur" name="precio_coste_eur" type="number" step="0.01" /></div>
           <div className="space-y-1.5"><Label htmlFor="precio_pvp_eur">PVP €</Label><Input id="precio_pvp_eur" name="precio_pvp_eur" type="number" step="0.01" /></div>
+          <div className="sm:col-span-6 space-y-1.5"><Label htmlFor="foto_url">URL fotografía</Label><Input id="foto_url" name="foto_url" placeholder="https://…" /></div>
           <div className="sm:col-span-6">
             <Button type="submit"><Plus className="h-4 w-4" /> Añadir puerta</Button>
           </div>

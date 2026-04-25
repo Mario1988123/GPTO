@@ -14,6 +14,7 @@ function payload(fd: FormData) {
     codigo: String(fd.get("codigo") ?? "").trim() || null,
     color_hex: String(fd.get("color_hex") ?? "").trim() || null,
     textura: String(fd.get("textura") ?? "").trim() || null,
+    foto_url: String(fd.get("foto_url") ?? "").trim() || null,
   };
 }
 

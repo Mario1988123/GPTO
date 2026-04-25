@@ -72,7 +72,7 @@ export default async function ConfiguradorArmarioPage({
       .order("orden")
       .returns<ModuloVista[]>(),
     s.from("tipos_modulo")
-      .select("id, nombre, ancho_default_mm, alto_default_mm, fondo_default_mm, categoria, es_estandar")
+      .select("id, nombre, ancho_default_mm, alto_default_mm, fondo_default_mm, categoria, es_estandar, foto_url")
       .eq("activo", true)
       .order("categoria")
       .order("nombre"),
@@ -100,11 +100,16 @@ export default async function ConfiguradorArmarioPage({
   // Tiradores del catálogo para el selector en los subelementos (cajones y puertas)
   const { data: tiradoresRaw } = await s
     .from("herrajes")
-    .select("id, nombre")
+    .select("id, nombre, foto_url, precio_unidad")
     .eq("activo", true)
     .eq("tipo", "tirador")
     .order("nombre");
-  const tiradores = (tiradoresRaw ?? []).map((t) => ({ id: t.id as string, nombre: t.nombre as string }));
+  const tiradores = (tiradoresRaw ?? []).map((t) => ({
+    id: t.id as string,
+    nombre: t.nombre as string,
+    foto_url: (t.foto_url as string | null) ?? null,
+    precio_unidad: (t.precio_unidad as number | null) ?? null,
+  }));
 
   const anchoOcupado = (modulos ?? []).reduce((acc, m) => acc + m.ancho_mm, 0);
   const anchoLibre = armario.ancho_total_mm - anchoOcupado;

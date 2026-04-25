@@ -17,6 +17,7 @@ function payload(fd: FormData) {
     nombre,
     categoria,
     descripcion: String(fd.get("descripcion") ?? "").trim() || null,
+    foto_url: String(fd.get("foto_url") ?? "").trim() || null,
   };
 }
 

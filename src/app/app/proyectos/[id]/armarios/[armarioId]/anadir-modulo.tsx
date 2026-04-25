@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { NINGUNA } from "@/lib/tipos/catalogo";
+import { PickerTrigger } from "@/components/picker-modal";
 
 type TipoOption = {
   id: string;
@@ -9,9 +10,11 @@ type TipoOption = {
   ancho_default_mm: number;
   alto_default_mm: number;
   fondo_default_mm: number;
+  categoria?: string | null;
+  foto_url?: string | null;
 };
 
-type RefOption = { id: string; label: string };
+type RefOption = { id: string; label: string; foto_url?: string | null };
 
 export function AnadirModuloForm({
   action,
@@ -69,22 +72,22 @@ export function AnadirModuloForm({
   return (
     <form action={action} className="grid gap-3 rounded-lg border border-dashed border-zinc-300 p-4 sm:grid-cols-6 dark:border-zinc-700">
       <div className="sm:col-span-3 space-y-1">
-        <label htmlFor="tipo_modulo_id" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Tipo de módulo *</label>
-        <select
-          id="tipo_modulo_id"
+        <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Tipo de módulo *</label>
+        <PickerTrigger
           name="tipo_modulo_id"
           required
           value={tipoId}
-          onChange={(e) => elegirTipo(e.target.value)}
-          className="w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-950"
-        >
-          <option value="">— selecciona —</option>
-          {tipos.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.nombre} ({t.ancho_default_mm}×{t.alto_default_mm}×{t.fondo_default_mm})
-            </option>
-          ))}
-        </select>
+          onChange={(id) => elegirTipo(id)}
+          placeholder="— selecciona tipo de módulo —"
+          title="Elegir tipo de módulo"
+          items={tipos.map((t) => ({
+            id: t.id,
+            nombre: t.nombre,
+            descripcion: t.categoria ?? undefined,
+            meta: `${t.ancho_default_mm}×${t.alto_default_mm}×${t.fondo_default_mm} mm`,
+            foto_url: t.foto_url ?? null,
+          }))}
+        />
       </div>
       <div className="space-y-1">
         <label htmlFor="ancho_mm" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Ancho (mm) *</label>
