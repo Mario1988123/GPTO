@@ -166,11 +166,43 @@ export function empacarMultiTablero(
     safety++;
     const res = empacarTablero(pendientes, W, H, kerf_mm);
     if (res.colocadas.length === 0) {
-      // Ninguna pieza cupo → todas son no colocables (probablemente > tablero).
       return { tableros, noColocadas: pendientes };
+    }
+    // Validación defensiva: si el algoritmo generase piezas solapadas, lo reportamos
+    // en consola para investigar. No bloqueamos el nesting porque los solapamientos
+    // detectados aquí son siempre bugs de empaquetado, no del input.
+    const solapes = detectarSolapes(res.colocadas, kerf_mm);
+    if (solapes.length > 0) {
+      console.warn(`[nesting] ${solapes.length} solapes detectados en tablero, revisar algoritmo:`, solapes.slice(0, 3));
     }
     tableros.push(res);
     pendientes = res.noColocadas;
   }
   return { tableros, noColocadas: pendientes };
+}
+
+/** Detecta pares de piezas colocadas que se solapen en el mismo tablero. */
+function detectarSolapes(
+  colocadas: Coloc[],
+  kerf: number,
+): Array<{ a: string; b: string }> {
+  const solapes: Array<{ a: string; b: string }> = [];
+  for (let i = 0; i < colocadas.length; i++) {
+    for (let j = i + 1; j < colocadas.length; j++) {
+      const a = colocadas[i];
+      const b = colocadas[j];
+      const ax1 = a.x, ay1 = a.y, ax2 = a.x + a.w, ay2 = a.y + a.h;
+      const bx1 = b.x, by1 = b.y, bx2 = b.x + b.w, by2 = b.y + b.h;
+      // Con kerf: las piezas deben estar separadas al menos kerf_mm.
+      // Dos rects se solapan (o están a menos de kerf) si no están
+      // completamente a un lado del otro.
+      const separacionOK =
+        ax2 + kerf <= bx1 || bx2 + kerf <= ax1 ||
+        ay2 + kerf <= by1 || by2 + kerf <= ay1;
+      if (!separacionOK) {
+        solapes.push({ a: a.key, b: b.key });
+      }
+    }
+  }
+  return solapes;
 }
