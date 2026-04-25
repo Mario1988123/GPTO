@@ -21,15 +21,34 @@ function parseDireccion(formData: FormData): Direccion | null {
 
 function parsePayload(formData: FormData) {
   const nombre = String(formData.get("nombre") ?? "").trim();
-  if (!nombre) throw new Error("El nombre es obligatorio.");
+  if (!nombre) throw new Error("El nombre / razón social es obligatorio.");
+
+  const es_empresa = String(formData.get("es_empresa") ?? "false") === "true";
+  const apellido1 = String(formData.get("apellido1") ?? "").trim() || null;
+  const apellido2 = String(formData.get("apellido2") ?? "").trim() || null;
+  const telefono = String(formData.get("telefono") ?? "").trim() || null;
+  const contacto_persona = String(formData.get("contacto_persona") ?? "").trim() || null;
+
+  // Validaciones condicionales:
+  if (!es_empresa && !apellido1) throw new Error("El primer apellido es obligatorio para particulares.");
+  if (!telefono) throw new Error("El teléfono es obligatorio.");
+  if (es_empresa && !contacto_persona) throw new Error("La persona de contacto es obligatoria en empresas.");
 
   const email = String(formData.get("email") ?? "").trim() || null;
-  const telefono = String(formData.get("telefono") ?? "").trim() || null;
   const nif = String(formData.get("nif") ?? "").trim() || null;
   const notas = String(formData.get("notas") ?? "").trim() || null;
 
   return {
     nombre,
+    apellido1,
+    apellido2,
+    es_empresa,
+    contacto_persona,
+    contacto_telefono: String(formData.get("contacto_telefono") ?? "").trim() || null,
+    contacto_email: String(formData.get("contacto_email") ?? "").trim() || null,
+    contacto2_persona: String(formData.get("contacto2_persona") ?? "").trim() || null,
+    contacto2_telefono: String(formData.get("contacto2_telefono") ?? "").trim() || null,
+    contacto2_email: String(formData.get("contacto2_email") ?? "").trim() || null,
     email,
     telefono,
     nif,

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Users, Plus, Search, Mail, Phone, ChevronRight } from "lucide-react";
+import { Users, Plus, Search, Mail, Phone, Pencil, Trash2, Power, FolderPlus, Building2, User } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ToastFromSearchParams } from "./toasts";
+import { alternarActivo, eliminarCliente } from "./actions";
 import type { Cliente } from "@/lib/tipos/cliente";
+import { nombreCompletoCliente } from "@/lib/tipos/cliente";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -37,7 +39,7 @@ export default async function ClientesPage({
 
   let query = supabase
     .from("clientes")
-    .select("id, nombre, email, telefono, nif, activo, created_at")
+    .select("id, nombre, apellido1, apellido2, es_empresa, email, telefono, nif, activo, created_at")
     .order("nombre");
 
   if (ver === "activos") query = query.eq("activo", true);
@@ -123,63 +125,80 @@ export default async function ClientesPage({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>NIF</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>NIF / CIF</TableHead>
                 <TableHead>Contacto</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="w-10" />
+                <TableHead className="w-40 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(clientes as Pick<Cliente, "id" | "nombre" | "email" | "telefono" | "nif" | "activo" | "created_at">[]).map((c) => (
-                <TableRow key={c.id} className="group">
-                  <TableCell>
-                    <Link
-                      href={`/app/clientes/${c.id}`}
-                      className="font-semibold transition group-hover:text-foreground"
-                    >
-                      {c.nombre}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {c.nif ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    <div className="flex flex-col gap-0.5 text-xs">
-                      {c.email ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <Mail className="h-3 w-3" />
-                          {c.email}
-                        </span>
-                      ) : null}
-                      {c.telefono ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <Phone className="h-3 w-3" />
-                          {c.telefono}
-                        </span>
-                      ) : null}
-                      {!c.email && !c.telefono ? "—" : null}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {c.activo ? (
-                      <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400">
-                        Activo
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">Inactivo</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Link
-                      href={`/app/clientes/${c.id}`}
-                      className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-muted hover:text-foreground"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {(clientes as Pick<Cliente, "id" | "nombre" | "apellido1" | "apellido2" | "es_empresa" | "email" | "telefono" | "nif" | "activo" | "created_at">[]).map((c) => {
+                const nombreMostrar = nombreCompletoCliente(c);
+                const toggle = async () => { "use server"; await alternarActivo(c.id, !c.activo); };
+                const borrar = async () => { "use server"; await eliminarCliente(c.id); };
+                return (
+                  <TableRow key={c.id} className="group">
+                    <TableCell>
+                      <Link href={`/app/clientes/${c.id}`} className="inline-flex items-center gap-2 font-semibold transition hover:text-foreground">
+                        {c.es_empresa ? <Building2 className="h-3.5 w-3.5 text-blue-600" /> : <User className="h-3.5 w-3.5 text-muted-foreground" />}
+                        {nombreMostrar}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{c.nif ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <div className="flex flex-col gap-0.5 text-xs">
+                        {c.email && <span className="inline-flex items-center gap-1.5"><Mail className="h-3 w-3" /> {c.email}</span>}
+                        {c.telefono && <span className="inline-flex items-center gap-1.5"><Phone className="h-3 w-3" /> {c.telefono}</span>}
+                        {!c.email && !c.telefono && "—"}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {c.activo ? (
+                        <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400">Activo</Badge>
+                      ) : (
+                        <Badge variant="secondary">Inactivo</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/app/proyectos/nuevo?cliente_id=${c.id}`}
+                          title="Crear proyecto para este cliente"
+                          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-blue-500/10 hover:text-blue-600"
+                        >
+                          <FolderPlus className="h-4 w-4" />
+                        </Link>
+                        <Link
+                          href={`/app/clientes/${c.id}`}
+                          title="Editar"
+                          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Link>
+                        <form action={toggle} className="inline">
+                          <button
+                            type="submit"
+                            title={c.activo ? "Desactivar" : "Reactivar"}
+                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-amber-500/10 hover:text-amber-600"
+                          >
+                            <Power className="h-4 w-4" />
+                          </button>
+                        </form>
+                        <form action={borrar} className="inline">
+                          <button
+                            type="submit"
+                            title="Eliminar"
+                            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </form>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         )}

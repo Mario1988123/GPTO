@@ -462,7 +462,7 @@ export function AberturasEditor({
             Aberturas
           </p>
           <h2 className="mt-0.5 text-lg font-bold tracking-tight">
-            Puertas y ventanas · {aberturas.length}
+            Puertas · {aberturas.length}
           </h2>
         </div>
       </div>
@@ -507,21 +507,11 @@ export function AberturasEditor({
 
       <form
         action={(fd) => onCrear(fd)}
-        className="grid gap-3 rounded-xl border border-dashed border-border bg-muted/20 p-4 sm:grid-cols-7"
+        className="grid gap-3 rounded-xl border border-dashed border-border bg-muted/20 p-4 sm:grid-cols-6"
       >
-        <label className="space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            Tipo
-          </span>
-          <select
-            name="tipo"
-            defaultValue="puerta"
-            className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-xs shadow-xs"
-          >
-            <option value="puerta">Puerta</option>
-            <option value="ventana">Ventana</option>
-          </select>
-        </label>
+        {/* Tipo fijo "puerta" — las ventanas se retiraron del flujo porque el presupuesto
+           se centra en armarios + puertas de paso. El tipo sigue en el schema por compatibilidad. */}
+        <input type="hidden" name="tipo" value="puerta" />
         <label className="space-y-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
             Pared

@@ -4,7 +4,7 @@ import { Canvas, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, Grid, Edges, Text } from "@react-three/drei";
 import { Suspense, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { SUBELEMENTOS_META, type ModuloSubelemento, type TipoSubelemento } from "@/lib/tipos/proyectos";
+import { SUBELEMENTOS_META, type ModuloSubelemento } from "@/lib/tipos/proyectos";
 import type { AcabadoKey } from "@/lib/render/materiales";
 import { ACABADOS } from "@/lib/render/materiales";
 
@@ -149,7 +149,19 @@ export function Armario3DPro(props: Props) {
   return (
     <div className="relative">
       <div className="h-[560px] w-full overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-slate-100 via-white to-slate-200">
-        <Canvas camera={{ position: [camDist, camDist * 0.7, camDist], fov: 35 }} dpr={[1, 1.5]}>
+        <Canvas
+          camera={{ position: [camDist, camDist * 0.7, camDist], fov: 35 }}
+          dpr={[1, 1.5]}
+          gl={{ powerPreference: "low-power", antialias: true, preserveDrawingBuffer: false }}
+          onCreated={({ gl }) => {
+            // Listener para context loss: recargar el componente si el navegador mata el contexto WebGL
+            const canvas = gl.domElement;
+            canvas.addEventListener("webglcontextlost", (e) => {
+              e.preventDefault();
+              console.warn("WebGL perdió el contexto — recarga la página si no se restaura");
+            });
+          }}
+        >
           <color attach="background" args={["#f5f5f5"]} />
           <ambientLight intensity={0.7} />
           <directionalLight position={[6, 10, 5]} intensity={1.0} />
@@ -373,37 +385,10 @@ function Subelementos({
   void mw;
   void tr;
 
-  // Autogenerar cajones si categoria es cajonera y no hay subelementos
-  const sub = useMemo(() => {
-    if (modulo.subelementos.length > 0) return modulo.subelementos;
-    const cat = (modulo.categoria ?? "").toLowerCase();
-    if (cat.includes("cajonera") || cat.includes("cajon")) {
-      const n = 4;
-      const alto = Math.round(modulo.alto_mm / n);
-      return Array.from({ length: n }).map((_, i) => ({
-        id: `v-cajon-${i}`,
-        empresa_id: "",
-        modulo_id: modulo.id,
-        tipo: "cajon" as TipoSubelemento,
-        orden: i,
-        alto_mm: alto,
-        ancho_mm: null,
-        fondo_mm: null,
-        offset_x_mm: 0,
-        offset_y_mm: 0,
-        offset_z_mm: 0,
-        config: {},
-        etiqueta: null,
-        es_propio: true,
-        proveedor_nombre: null,
-        precio_override_eur: null,
-        ref_proveedor: null,
-        created_at: "",
-        updated_at: "",
-      }));
-    }
-    return [];
-  }, [modulo]);
+  // Sin auto-generado ficticio: el 3D muestra exactamente los subelementos reales.
+  // Antes se generaban 4 cajones placeholder si la categoría contenía "cajonera", lo cual
+  // hacía que Mario pidiese 3 y viese 4. Si no hay subelementos, el 3D deja el hueco vacío.
+  const sub = modulo.subelementos;
 
   const interior = [...sub]
     .filter((s) =>

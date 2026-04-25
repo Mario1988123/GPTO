@@ -25,24 +25,37 @@ async function assertProyectoEditable(proyectoId: string) {
 
 // ================== PROYECTOS ==================
 
-function payloadProyecto(fd: FormData) {
+// Payload al crear: el estado se fuerza a 'borrador' — no se permite elegirlo.
+// El estado avanza sólo por workflow (aceptar presupuesto, confirmar pedido, etc.).
+function payloadCrearProyecto(fd: FormData) {
   const nombre = String(fd.get("nombre") ?? "").trim();
   if (!nombre) throw new Error("Nombre obligatorio.");
   const cliente_id = String(fd.get("cliente_id") ?? "").trim();
   if (!cliente_id) throw new Error("Cliente obligatorio.");
-  const estado = String(fd.get("estado") ?? "borrador") as EstadoProyecto;
-  if (!ESTADOS.includes(estado)) throw new Error("Estado inválido.");
   return {
     nombre,
     cliente_id,
-    estado,
+    estado: "borrador" as EstadoProyecto,
+    notas: String(fd.get("notas") ?? "").trim() || null,
+  };
+}
+
+// Payload al editar: no se toca el estado (lo ignora aunque venga en el form).
+function payloadEditarProyecto(fd: FormData) {
+  const nombre = String(fd.get("nombre") ?? "").trim();
+  if (!nombre) throw new Error("Nombre obligatorio.");
+  const cliente_id = String(fd.get("cliente_id") ?? "").trim();
+  if (!cliente_id) throw new Error("Cliente obligatorio.");
+  return {
+    nombre,
+    cliente_id,
     notas: String(fd.get("notas") ?? "").trim() || null,
   };
 }
 
 export async function crearProyecto(fd: FormData) {
   const s = await createClient();
-  const { data, error } = await s.from("proyectos").insert(payloadProyecto(fd)).select("id").single();
+  const { data, error } = await s.from("proyectos").insert(payloadCrearProyecto(fd)).select("id").single();
   if (error) redirect(`${BASE}/nuevo?error=${encodeURIComponent(error.message)}`);
   revalidatePath(BASE);
   redirect(`${BASE}/${data!.id}?ok=creado`);
@@ -50,7 +63,7 @@ export async function crearProyecto(fd: FormData) {
 export async function actualizarProyecto(id: string, fd: FormData) {
   await assertProyectoEditable(id);
   const s = await createClient();
-  const { error } = await s.from("proyectos").update(payloadProyecto(fd)).eq("id", id);
+  const { error } = await s.from("proyectos").update(payloadEditarProyecto(fd)).eq("id", id);
   if (error) redirect(`${BASE}/${id}?error=${encodeURIComponent(error.message)}`);
   revalidatePath(BASE); revalidatePath(`${BASE}/${id}`);
   redirect(`${BASE}/${id}?ok=actualizado`);
@@ -182,18 +195,31 @@ function payloadModulo(fd: FormData) {
 export async function anadirModulo(proyectoId: string, armarioId: string, fd: FormData) {
   await assertProyectoEditable(proyectoId);
   const s = await createClient();
-  const { data: max } = await s
+
+  // Traigo los módulos existentes para:
+  //  - calcular orden (último + 1)
+  //  - calcular posicion_x_mm inicial (ancho acumulado → no solapan)
+  const { data: existentes } = await s
     .from("modulos_armario")
-    .select("orden")
+    .select("orden, ancho_mm, posicion_x_mm")
     .eq("armario_id", armarioId)
-    .order("orden", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const orden = ((max?.orden ?? -1) as number) + 1;
+    .order("orden");
+
+  const orden = ((existentes?.[existentes.length - 1]?.orden ?? -1) as number) + 1;
+  // Sumo el ancho de todos los previos que estén pegados al origen (fila base).
+  // Si Mario ha arrastrado alguno en Y, la heurística aún funciona — simplemente
+  // el nuevo módulo aparece pegado al último libre sin solapar.
+  const anchoAcumulado = (existentes ?? []).reduce((a, m) => a + (m.ancho_mm as number), 0);
 
   const { error } = await s
     .from("modulos_armario")
-    .insert({ ...payloadModulo(fd), armario_id: armarioId, orden });
+    .insert({
+      ...payloadModulo(fd),
+      armario_id: armarioId,
+      orden,
+      posicion_x_mm: anchoAcumulado,
+      posicion_y_mm: 0,
+    });
   if (error) redirect(`${BASE}/${proyectoId}/armarios/${armarioId}?error=${encodeURIComponent(error.message)}`);
   revalidatePath(`${BASE}/${proyectoId}/armarios/${armarioId}`);
   redirect(`${BASE}/${proyectoId}/armarios/${armarioId}?ok=creado`);

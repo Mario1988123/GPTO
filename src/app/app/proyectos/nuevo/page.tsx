@@ -3,18 +3,25 @@ import { Suspense } from "react";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { crearProyecto } from "../actions";
-import { ProyectoForm } from "../proyecto-form";
+import { ProyectoFormCrear } from "../proyecto-form-crear";
 import { ToastFromSearchParams } from "../../catalogo/shared";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
 
-export default async function NuevoProyectoPage() {
+export default async function NuevoProyectoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ cliente_id?: string }>;
+}) {
+  const { cliente_id: clienteIdRaw } = await searchParams;
+  const clienteIdPrefill = clienteIdRaw && clienteIdRaw.trim() ? clienteIdRaw : null;
+
   const s = await createClient();
   const { data: clientes } = await s
     .from("clientes")
-    .select("id, nombre")
+    .select("id, nombre, apellido1, apellido2, es_empresa")
     .eq("activo", true)
     .order("nombre");
 
@@ -25,17 +32,17 @@ export default async function NuevoProyectoPage() {
       </Suspense>
 
       <Link
-        href="/app/proyectos"
+        href={clienteIdPrefill ? `/app/clientes/${clienteIdPrefill}` : "/app/proyectos"}
         className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition hover:text-foreground"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Volver a proyectos
+        {clienteIdPrefill ? "Volver al cliente" : "Volver a proyectos"}
       </Link>
 
       <PageHeader
         eyebrow="Nuevo registro"
         title="Nuevo proyecto"
-        description="Un proyecto se asigna a un cliente y agrupa estancias y armarios."
+        description="Asigna el cliente y ponle nombre. El proyecto empieza como borrador."
       />
 
       {(clientes ?? []).length === 0 ? (
@@ -53,7 +60,11 @@ export default async function NuevoProyectoPage() {
         </div>
       ) : (
         <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-          <ProyectoForm clientes={clientes ?? []} action={crearProyecto} submitLabel="Crear proyecto" />
+          <ProyectoFormCrear
+            clientes={clientes ?? []}
+            clienteIdPrefill={clienteIdPrefill}
+            action={crearProyecto}
+          />
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Truck, Layers, Palette, Package, Ruler, Wrench, ArrowRight } from "lucide-react";
+import { Truck, Layers, Palette, Package, Ruler, Wrench, ArrowRight, DoorOpen, Grid3x3, Blinds } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/page-header";
@@ -19,6 +19,9 @@ const ITEMS: {
   { href: "/app/catalogo/referencias-tablero", titulo: "Referencias tablero", descripcion: "SKUs reales (material + acabado + grosor).", tabla: "referencias_tablero", icon: Package },
   { href: "/app/catalogo/cantos", titulo: "Cantos", descripcion: "Precio por metro lineal.", tabla: "cantos", icon: Ruler },
   { href: "/app/catalogo/herrajes", titulo: "Herrajes", descripcion: "Bisagras, tiradores, guías.", tabla: "herrajes", icon: Wrench },
+  { href: "/app/catalogo/puertas-paso", titulo: "Puertas de paso", descripcion: "Correderas, abatibles, invisibles... Con variantes, tapeta y proveedor.", tabla: "puertas_paso_catalogo", icon: DoorOpen },
+  { href: "/app/catalogo/suelos", titulo: "Suelos", descripcion: "Parquet, laminado, vinílico. €/m².", tabla: "suelos_catalogo", icon: Grid3x3 },
+  { href: "/app/catalogo/rodapies", titulo: "Rodapiés", descripcion: "PVC, madera, lacado. Con/sin LED. €/ml.", tabla: "rodapies_catalogo", icon: Blinds },
 ];
 
 export default async function CatalogoPage() {

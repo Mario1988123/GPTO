@@ -9,7 +9,7 @@ export function PageHeader({
   children,
 }: {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   eyebrow?: string;
   actions?: React.ReactNode;
   className?: string;

@@ -194,23 +194,27 @@ export async function generarCajones(
   const s = await createClient();
   const { data: mod } = await s
     .from("modulos_armario")
-    .select("alto_mm")
+    .select("alto_mm, separacion_cajones_mm")
     .eq("id", moduloId)
-    .maybeSingle<{ alto_mm: number }>();
+    .maybeSingle<{ alto_mm: number; separacion_cajones_mm: number | null }>();
   if (!mod) throw new Error("Módulo no encontrado");
+
+  // Descontar separaciones del alto útil: N cajones llevan (N-1) separaciones entre ellos
+  // (o N según criterio). Aquí uso (N-1) porque no hay hueco arriba del último ni debajo del primero.
+  const sep = mod.separacion_cajones_mm ?? 2;
+  const altoUtil = Math.max(1, mod.alto_mm - sep * Math.max(0, n - 1));
 
   // Borrar cajones previos (solo los de tipo cajón)
   await s.from("modulo_subelementos").delete().eq("modulo_id", moduloId).eq("tipo", "cajon");
 
   let alturas: number[] = [];
   if (distribucion === "iguales") {
-    const alto = Math.floor(mod.alto_mm / Math.max(1, n));
+    const alto = Math.floor(altoUtil / Math.max(1, n));
     alturas = Array.from({ length: n }, () => alto);
   } else if (distribucion === "progresiva") {
-    // Pesos decrecientes para hasta 6 cajones
     const pesos = [0.30, 0.22, 0.18, 0.13, 0.10, 0.07].slice(0, n);
     const sum = pesos.reduce((a, b) => a + b, 0);
-    alturas = pesos.map((w) => Math.round((w / sum) * mod.alto_mm));
+    alturas = pesos.map((w) => Math.round((w / sum) * altoUtil));
   } else if (distribucion === "personalizada") {
     if (!alturasMm || alturasMm.length === 0) throw new Error("Alturas personalizadas vacías");
     alturas = alturasMm.map((a) => Math.max(50, Math.round(a)));

@@ -44,9 +44,12 @@ export function AnadirModuloForm({
     const t = tipos.find((x) => x.id === id);
     if (t) {
       setAncho(String(t.ancho_default_mm));
-      setAlto(String(alto_total_mm));
+      // Respetar el alto por defecto del tipo (un colgador corto es 1200mm, no 2500mm).
+      // Topeado al alto total del armario.
+      const altoSugerido = Math.min(t.alto_default_mm, alto_total_mm);
+      setAlto(String(altoSugerido));
       setFondo(String(fondo_mm));
-      setParticiones(String(calcularParticiones(alto_total_mm)));
+      setParticiones(String(calcularParticiones(altoSugerido)));
     }
   };
 

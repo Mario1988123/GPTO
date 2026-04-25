@@ -7,31 +7,32 @@ import {
   Trash2,
   Receipt,
   Scissors,
-  Link2,
   Home,
   Plus,
   Boxes,
   Calendar,
   Lock,
   Unlock,
-  CheckCircle2,
+  Pencil,
+  User,
+  Building2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import {
-  actualizarProyecto,
   crearArmario,
   eliminarProyecto,
   reabrirProyecto,
-  cerrarProyecto,
 } from "../actions";
-import { ProyectoForm } from "../proyecto-form";
 import { ToastFromSearchParams } from "../../catalogo/shared";
 import { ESTADOS_PROYECTO, esProyectoCerrado, type Armario, type Proyecto } from "@/lib/tipos/proyectos";
+import type { Cliente } from "@/lib/tipos/cliente";
+import { nombreCompletoCliente } from "@/lib/tipos/cliente";
 import { PageHeader } from "@/components/page-header";
 import { AsistenteIA } from "./asistente-ia";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
+import { CopiarEnlaceCliente } from "./copiar-enlace-cliente";
 
 export const dynamic = "force-dynamic";
 
@@ -66,15 +67,15 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
   const { data: proyecto } = await s.from("proyectos").select("*").eq("id", id).maybeSingle<Proyecto>();
   if (!proyecto) notFound();
 
-  const [{ data: clientes }, { data: armarios }, { data: estancias }] = await Promise.all([
-    s.from("clientes").select("id, nombre").eq("activo", true).order("nombre"),
+  const [{ data: cliente }, { data: armarios }, { data: estancias }] = await Promise.all([
+    s.from("clientes").select("id, nombre, apellido1, apellido2, es_empresa").eq("id", proyecto.cliente_id).maybeSingle<Pick<Cliente, "id" | "nombre" | "apellido1" | "apellido2" | "es_empresa">>(),
     s.from("armarios").select("*").eq("proyecto_id", id).order("orden").returns<Armario[]>(),
     s.from("estancias").select("id, nombre, tipo, orden, largo_mm, ancho_mm, alto_mm").eq("proyecto_id", id).order("orden"),
   ]);
 
   const cerrado = esProyectoCerrado(proyecto);
+  const hayArmarios = (armarios ?? []).length > 0;
 
-  const update = async (fd: FormData) => { "use server"; await actualizarProyecto(id, fd); };
   const del = async () => { "use server"; await eliminarProyecto(id); };
   const addArm = async (fd: FormData) => { "use server"; await crearArmario(id, fd); };
   const addEst = async (fd: FormData) => {
@@ -83,7 +84,6 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
     await crearEstancia(id, fd);
   };
   const reabrir = async () => { "use server"; await reabrirProyecto(id); };
-  const cerrar = async () => { "use server"; await cerrarProyecto(id); };
 
   const armariosPorEstancia = new Map<string, Armario[]>();
   for (const a of armarios ?? []) {
@@ -91,6 +91,8 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
     arr.push(a);
     armariosPorEstancia.set(a.estancia_id, arr);
   }
+
+  const clienteLabel = cliente ? nombreCompletoCliente(cliente) : "—";
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -109,6 +111,16 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
       <PageHeader
         eyebrow="Proyecto"
         title={proyecto.nombre}
+        description={
+          cliente ? (
+            <span className="inline-flex items-center gap-1.5">
+              {cliente.es_empresa ? <Building2 className="h-3.5 w-3.5 text-blue-600" /> : <User className="h-3.5 w-3.5" />}
+              <Link href={`/app/clientes/${cliente.id}`} className="transition hover:text-foreground hover:underline">
+                {clienteLabel}
+              </Link>
+            </span>
+          ) : undefined
+        }
         actions={
           <>
             <Badge className={`${ESTADO_VARIANT[proyecto.estado] ?? ""} border-0`}>
@@ -127,42 +139,69 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
               <Calendar className="h-3.5 w-3.5" />
               Agenda
             </Link>
-            <form action={async () => {
-              "use server";
-              const { regenerarPiezasProyectoYRedirect } = await import("../piezas-actions");
-              await regenerarPiezasProyectoYRedirect(id, `/app/proyectos/${id}`);
-            }}>
-              <Button type="submit" variant="outline" size="sm">
-                <Boxes className="h-3.5 w-3.5" />
-                Explosionar piezas
-              </Button>
-            </form>
-            <form action={async () => {
-              "use server";
-              const { regenerarPiezasProyecto } = await import("../piezas-actions");
-              const { ejecutarNesting } = await import("../nesting-actions");
-              try { await regenerarPiezasProyecto(id); } catch {}
-              await ejecutarNesting(id); // redirige a /nesting internamente
-            }}>
-              <Button type="submit" size="sm" className="bg-gradient-to-br from-blue-500 to-cyan-400 text-white hover:shadow-lg hover:shadow-blue-500/30">
-                <Scissors className="h-3.5 w-3.5" />
-                Optimizar tableros
-              </Button>
-            </form>
-            <form action={async () => { "use server"; const { crearBorrador } = await import("../presupuestos-actions"); await crearBorrador(id); }}>
-              <Button type="submit" variant="outline" size="sm">
-                <Receipt className="h-3.5 w-3.5" />
-                Calcular presupuesto
-              </Button>
-            </form>
-            <Link
-              href={`/app/proyectos/${id}/nesting`}
-              className={buttonVariants({ size: "sm" })}
-            >
-              <Scissors className="h-3.5 w-3.5" />
-              Nesting
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            {/* Acciones dependientes de armarios: solo si hay al menos uno */}
+            {hayArmarios && !cerrado && (
+              <>
+                <form action={async () => {
+                  "use server";
+                  const { regenerarPiezasProyectoYRedirect } = await import("../piezas-actions");
+                  await regenerarPiezasProyectoYRedirect(id, `/app/proyectos/${id}`);
+                }}>
+                  <Button type="submit" variant="outline" size="sm">
+                    <Boxes className="h-3.5 w-3.5" />
+                    Explosionar piezas
+                  </Button>
+                </form>
+                <form action={async () => {
+                  "use server";
+                  const { regenerarPiezasProyecto } = await import("../piezas-actions");
+                  const { ejecutarNesting } = await import("../nesting-actions");
+                  try { await regenerarPiezasProyecto(id); } catch {}
+                  await ejecutarNesting(id);
+                }}>
+                  <Button type="submit" size="sm" className="bg-gradient-to-br from-blue-500 to-cyan-400 text-white hover:shadow-lg hover:shadow-blue-500/30">
+                    <Scissors className="h-3.5 w-3.5" />
+                    Optimizar tableros
+                  </Button>
+                </form>
+                <form action={async () => { "use server"; const { crearBorrador } = await import("../presupuestos-actions"); await crearBorrador(id); }}>
+                  <Button type="submit" variant="outline" size="sm">
+                    <Receipt className="h-3.5 w-3.5" />
+                    Calcular presupuesto
+                  </Button>
+                </form>
+                <Link
+                  href={`/app/proyectos/${id}/nesting`}
+                  className={buttonVariants({ size: "sm" })}
+                >
+                  <Scissors className="h-3.5 w-3.5" />
+                  Corte tableros
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </>
+            )}
+            {!cerrado && (
+              <Link
+                href={`/app/proyectos/${id}/editar`}
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
+                title="Editar datos del proyecto"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Link>
+            )}
+            {!cerrado && (
+              <form action={del} className="inline">
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="sm"
+                  title="Eliminar proyecto"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </form>
+            )}
           </>
         }
       />
@@ -190,65 +229,8 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
         </section>
       )}
 
-      {/* Asistente IA */}
-      <div className="mt-6">
-        <AsistenteIA proyectoId={id} />
-      </div>
-
-      {/* Portal cliente */}
-      <section className="mt-6 flex items-start gap-3 rounded-2xl border border-emerald-200/60 bg-emerald-50/50 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-700 dark:text-emerald-400">
-          <Link2 className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Portal cliente</p>
-          <p className="mt-0.5 text-xs text-emerald-700/80 dark:text-emerald-400/80">
-            Enlace privado para que el cliente vea el estado de su proyecto en tiempo real.
-          </p>
-          <code className="mt-2 block truncate rounded-md border border-emerald-500/20 bg-background/60 px-2.5 py-1.5 font-mono text-xs">
-            /c/{proyecto.acceso_token}
-          </code>
-        </div>
-      </section>
-
-      {/* Datos del proyecto */}
-      <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              Ficha
-            </p>
-            <h2 className="mt-0.5 text-lg font-bold tracking-tight">Datos del proyecto</h2>
-          </div>
-        </div>
-        <fieldset disabled={cerrado} className={cerrado ? "opacity-60" : ""}>
-          <ProyectoForm proyecto={proyecto} clientes={clientes ?? []} action={update} submitLabel="Guardar cambios" />
-        </fieldset>
-        {!cerrado && (
-          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-5">
-            <form action={cerrar}>
-              <Button type="submit" variant="outline" size="sm">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Marcar como entregado y cerrar
-              </Button>
-            </form>
-            <form action={del}>
-              <Button
-                type="submit"
-                variant="outline"
-                size="sm"
-                className="border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Eliminar proyecto
-              </Button>
-            </form>
-          </div>
-        )}
-      </section>
-
-      {/* Estancias y armarios */}
-      <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
+      {/* Estancias y armarios — primer bloque, es lo primero que interesa */}
+      <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm sm:p-8">
         <div className="mb-6 flex items-baseline justify-between">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
@@ -363,9 +345,6 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
               <Plus className="h-4 w-4" />
               Crear estancia y entrar
             </Button>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              Las dimensiones se usan para el plano 2D y el 3D. Puedes editarlas luego dentro de la estancia.
-            </p>
           </div>
         </form>}
 
@@ -405,6 +384,18 @@ export default async function DetalleProyectoPage({ params }: { params: Promise<
             </div>
           </form>
         </details>}
+      </section>
+
+      {/* Asistente IA — sólo cuando hay al menos una estancia para tener contexto */}
+      {(estancias ?? []).length > 0 && (
+        <div className="mt-6">
+          <AsistenteIA proyectoId={id} />
+        </div>
+      )}
+
+      {/* Portal cliente — discreto, botón copiar */}
+      <section className="mt-6">
+        <CopiarEnlaceCliente token={proyecto.acceso_token} />
       </section>
     </div>
   );

@@ -1,7 +1,11 @@
 import type { Proyecto } from "@/lib/tipos/proyectos";
-import { ESTADOS_PROYECTO } from "@/lib/tipos/proyectos";
 import { Field, Select, SubmitButton, Textarea } from "../catalogo/shared";
 
+/**
+ * Form de edición de un proyecto existente.
+ * El selector de estado se quitó a propósito — el estado se maneja por workflow
+ * (aceptar presupuesto, confirmar pedido, finalizar montaje, etc.).
+ */
 export function ProyectoForm({
   proyecto,
   clientes,
@@ -17,19 +21,15 @@ export function ProyectoForm({
     <form action={action} className="space-y-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nombre *" name="nombre" defaultValue={proyecto?.nombre} required className="sm:col-span-2" />
-        <Select
-          label="Cliente *"
-          name="cliente_id"
-          required
-          defaultValue={proyecto?.cliente_id ?? ""}
-          options={[{ value: "", label: "— selecciona —" }, ...clientes.map((c) => ({ value: c.id, label: c.nombre }))]}
-        />
-        <Select
-          label="Estado"
-          name="estado"
-          defaultValue={proyecto?.estado ?? "borrador"}
-          options={ESTADOS_PROYECTO.map((e) => ({ value: e.value, label: e.label }))}
-        />
+        <div className="sm:col-span-2">
+          <Select
+            label="Cliente *"
+            name="cliente_id"
+            required
+            defaultValue={proyecto?.cliente_id ?? ""}
+            options={[{ value: "", label: "— selecciona —" }, ...clientes.map((c) => ({ value: c.id, label: c.nombre }))]}
+          />
+        </div>
       </div>
       <Textarea label="Notas" name="notas" defaultValue={proyecto?.notas} />
       <SubmitButton label={submitLabel} />

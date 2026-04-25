@@ -123,9 +123,6 @@ export default async function DetalleEstanciaPage({
             <label className="text-xs font-semibold text-muted-foreground">Notas</label>
             <textarea name="notas" rows={2} defaultValue={estancia.notas ?? ""} className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs" />
           </div>
-          <p className="sm:col-span-4 rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-400">
-            Las dimensiones de la estancia (largo, ancho, alto) se configuran en el <strong>plano</strong> de abajo. Son la única fuente de verdad.
-          </p>
           <div className="sm:col-span-4 flex items-center gap-3 border-t border-border pt-4">
             <Button type="submit">Guardar</Button>
             <form action={delEst} className="inline">
@@ -164,35 +161,40 @@ export default async function DetalleEstanciaPage({
         }}
       />
 
-      {/* Plano 3D */}
-      <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
-        <div className="mb-4 flex items-baseline justify-between">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              Vista 3D
-            </p>
-            <h2 className="mt-0.5 text-lg font-bold tracking-tight">Estancia con armarios</h2>
+      {/* Plano 3D — colapsado por defecto para no sobrecargar la pantalla.
+         Abrir <details> carga el componente (Estancia3DLazy ya usa ssr:false). */}
+      <section className="mt-6 rounded-2xl border border-border bg-card shadow-sm">
+        <details>
+          <summary className="flex cursor-pointer items-center justify-between gap-3 px-6 py-4 hover:bg-muted/30">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Vista 3D
+              </p>
+              <h2 className="mt-0.5 text-lg font-bold tracking-tight">Estancia con armarios</h2>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              Paredes · puertas · armarios. Click para abrir.
+            </span>
+          </summary>
+          <div className="px-6 pb-6">
+            <Estancia3D
+              puntos={puntosEfectivos}
+              alto_pared_mm={altoParedEfectivo}
+              aberturas={aberturas ?? []}
+              armarios={(armarios ?? []).map((a) => ({
+                id: a.id,
+                nombre: a.nombre,
+                ancho_total_mm: a.ancho_total_mm,
+                alto_total_mm: a.alto_total_mm,
+                fondo_mm: a.fondo_mm,
+                plano_x_mm: a.plano_x_mm,
+                plano_y_mm: a.plano_y_mm,
+                plano_rotacion: a.plano_rotacion,
+                tipo_instalacion: a.tipo_instalacion,
+              }))}
+            />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Paredes · puertas · ventanas · armarios colocados según plano 2D
-          </p>
-        </div>
-        <Estancia3D
-          puntos={puntosEfectivos}
-          alto_pared_mm={altoParedEfectivo}
-          aberturas={aberturas ?? []}
-          armarios={(armarios ?? []).map((a) => ({
-            id: a.id,
-            nombre: a.nombre,
-            ancho_total_mm: a.ancho_total_mm,
-            alto_total_mm: a.alto_total_mm,
-            fondo_mm: a.fondo_mm,
-            plano_x_mm: a.plano_x_mm,
-            plano_y_mm: a.plano_y_mm,
-            plano_rotacion: a.plano_rotacion,
-            tipo_instalacion: a.tipo_instalacion,
-          }))}
-        />
+        </details>
       </section>
 
       {/* Armarios */}
