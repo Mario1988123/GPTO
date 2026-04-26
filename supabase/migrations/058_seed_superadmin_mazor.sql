@@ -1,33 +1,23 @@
--- 058_seed_superadmin_mazor.sql (corregida)
--- Capa 26 — Seed: Mario superadmin (me.com) + Mario admin de MAZOR (gmail.com).
+-- 058_seed_superadmin_mazor.sql (definitiva)
+-- Capa 26 — Seed completo: crea los auth.users si no existen + Mario superadmin
+-- + empresa MAZOR + Mario admin gmail + plantillas email base.
 --
--- CORRECCIÓN: la tabla public.usuarios solo tiene id (FK a auth.users), nombre,
--- rol, empresa_id, activo. NO tiene columna email. Esta migración:
---  1) Añade public.usuarios.email TEXT (sincronizado desde auth.users vía trigger).
---  2) Relaja public.usuarios.nombre para que pueda ser NULL (los seeds y las
---     invitaciones por magic-link aún no tienen nombre cuando llegan).
---  3) Hace los seeds de Mario superadmin + MAZOR + Mario admin gmail
---     buscando primero el id en auth.users por email.
+-- Esta migración es idempotente y se puede re-ejecutar sin error:
+-- - Si el auth.user ya existe, no lo recrea (solo refresca password).
+-- - Si la empresa MAZOR existe, solo la activa.
+-- - Si los usuarios públicos existen, los actualiza.
 --
--- Si el usuario auth no existe todavía, esta migración no lo crea (los crea
--- Mario manualmente desde Supabase Dashboard → Auth → Users). La migración
--- no fallará — simplemente saltará ese paso y se podrá re-aplicar.
+-- Hace falta pgcrypto (ya lo añade la 057).
 
--- =========== AMPLIAR public.usuarios ===========
-ALTER TABLE public.usuarios
-  ADD COLUMN IF NOT EXISTS email TEXT;
+-- =========== AMPLIAR public.usuarios CON email + nombre nullable ===========
+ALTER TABLE public.usuarios ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.usuarios ALTER COLUMN nombre DROP NOT NULL;
 
--- nombre nullable (antes era NOT NULL)
-ALTER TABLE public.usuarios
-  ALTER COLUMN nombre DROP NOT NULL;
-
--- Sincronizar email desde auth.users (snapshot inicial).
 UPDATE public.usuarios u
 SET email = au.email
 FROM auth.users au
 WHERE au.id = u.id AND (u.email IS NULL OR u.email <> au.email);
 
--- Trigger: cuando cambia el email en auth.users, propagar a public.usuarios.
 CREATE OR REPLACE FUNCTION public.sync_usuario_email() RETURNS TRIGGER LANGUAGE plpgsql AS $sync$
 BEGIN
   UPDATE public.usuarios SET email = NEW.email WHERE id = NEW.id;
@@ -39,21 +29,74 @@ CREATE TRIGGER auth_users_sync_email
   AFTER UPDATE OF email ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.sync_usuario_email();
 
+-- =========== HELPER: crear auth.user con password bcrypt ===========
+CREATE OR REPLACE FUNCTION public.seed_auth_user(p_email TEXT, p_password TEXT)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $au$
+DECLARE
+  v_id UUID;
+BEGIN
+  SELECT id INTO v_id FROM auth.users WHERE email = p_email LIMIT 1;
+  IF v_id IS NOT NULL THEN
+    -- Ya existe: actualizar password.
+    UPDATE auth.users
+    SET encrypted_password = crypt(p_password, gen_salt('bf')),
+        email_confirmed_at = COALESCE(email_confirmed_at, now()),
+        updated_at         = now()
+    WHERE id = v_id;
+    RETURN v_id;
+  END IF;
+
+  -- Crear nuevo
+  v_id := gen_random_uuid();
+  INSERT INTO auth.users (
+    instance_id, id, aud, role, email, encrypted_password,
+    email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+    created_at, updated_at, confirmation_token, recovery_token,
+    email_change_token_new, email_change
+  )
+  VALUES (
+    '00000000-0000-0000-0000-000000000000',
+    v_id,
+    'authenticated',
+    'authenticated',
+    p_email,
+    crypt(p_password, gen_salt('bf')),
+    now(),
+    jsonb_build_object('provider','email','providers',jsonb_build_array('email')),
+    '{}'::jsonb,
+    now(), now(), '', '', '', ''
+  );
+
+  -- Identity (necesaria para login con email/password en Supabase Auth)
+  INSERT INTO auth.identities (
+    id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at
+  )
+  VALUES (
+    gen_random_uuid(), v_id, p_email,
+    jsonb_build_object('sub', v_id::text, 'email', p_email, 'email_verified', true, 'provider', 'email'),
+    'email', now(), now(), now()
+  );
+
+  RETURN v_id;
+END;
+$au$;
+
+-- =========== CREAR / RESETEAR LOS DOS AUTH USERS DE MARIO ===========
+SELECT public.seed_auth_user('mario.ortigueira@me.com',     'Mario.:123');
+SELECT public.seed_auth_user('mario.ortigueira@gmail.com',  'Mario.:123');
+
 -- =========== MARIO SUPERADMIN (me.com) ===========
 DO $sa$
 DECLARE
   v_auth_id UUID;
-  v_existe  UUID;
 BEGIN
   SELECT id INTO v_auth_id FROM auth.users WHERE email = 'mario.ortigueira@me.com' LIMIT 1;
-  IF v_auth_id IS NULL THEN
-    RAISE NOTICE 'Auth user mario.ortigueira@me.com NO existe. Crea el usuario en Auth → Users y re-ejecuta esta migración.';
-    RETURN;
-  END IF;
+  IF v_auth_id IS NULL THEN RETURN; END IF;
 
-  SELECT id INTO v_existe FROM public.usuarios WHERE id = v_auth_id LIMIT 1;
-
-  IF v_existe IS NULL THEN
+  IF NOT EXISTS (SELECT 1 FROM public.usuarios WHERE id = v_auth_id) THEN
     INSERT INTO public.usuarios (id, email, nombre, rol, es_superadmin, empresa_id, activo)
     VALUES (v_auth_id, 'mario.ortigueira@me.com', 'Mario Ortigueira (superadmin)', 'admin', TRUE, NULL, TRUE);
   ELSE
@@ -70,14 +113,19 @@ END;
 $sa$;
 
 -- =========== EMPRESA MAZOR ===========
+-- IMPORTANTE: empresas.slug es NOT NULL UNIQUE. Generar 'mazor'.
 DO $emp$
 DECLARE
   v_emp_id UUID;
 BEGIN
-  SELECT id INTO v_emp_id FROM public.empresas WHERE LOWER(nombre) = 'mazor' LIMIT 1;
+  SELECT id INTO v_emp_id FROM public.empresas WHERE slug = 'mazor' LIMIT 1;
   IF v_emp_id IS NULL THEN
-    INSERT INTO public.empresas (nombre, estado, plan, fecha_alta)
-    VALUES ('MAZOR', 'activa', 'taller', CURRENT_DATE)
+    SELECT id INTO v_emp_id FROM public.empresas WHERE LOWER(nombre) = 'mazor' LIMIT 1;
+  END IF;
+
+  IF v_emp_id IS NULL THEN
+    INSERT INTO public.empresas (nombre, slug, estado, plan, fecha_alta)
+    VALUES ('MAZOR', 'mazor', 'activa', 'taller', CURRENT_DATE)
     RETURNING id INTO v_emp_id;
   ELSE
     UPDATE public.empresas SET estado = 'activa' WHERE id = v_emp_id;
@@ -98,25 +146,15 @@ DECLARE
   v_emp_id     UUID;
   v_rol_admin  UUID;
   v_auth_id    UUID;
-  v_existe     UUID;
 BEGIN
-  SELECT id INTO v_emp_id FROM public.empresas WHERE LOWER(nombre) = 'mazor' LIMIT 1;
-  IF v_emp_id IS NULL THEN
-    RAISE NOTICE 'MAZOR no existe, salto admin';
-    RETURN;
-  END IF;
+  SELECT id INTO v_emp_id FROM public.empresas WHERE slug = 'mazor' LIMIT 1;
+  IF v_emp_id IS NULL THEN RETURN; END IF;
 
   SELECT id INTO v_rol_admin FROM public.roles_empresa WHERE empresa_id = v_emp_id AND es_admin = TRUE LIMIT 1;
   SELECT id INTO v_auth_id   FROM auth.users WHERE email = 'mario.ortigueira@gmail.com' LIMIT 1;
+  IF v_auth_id IS NULL THEN RETURN; END IF;
 
-  IF v_auth_id IS NULL THEN
-    RAISE NOTICE 'Auth user mario.ortigueira@gmail.com NO existe. Crea el usuario en Auth → Users y re-ejecuta esta migración.';
-    RETURN;
-  END IF;
-
-  SELECT id INTO v_existe FROM public.usuarios WHERE id = v_auth_id LIMIT 1;
-
-  IF v_existe IS NULL THEN
+  IF NOT EXISTS (SELECT 1 FROM public.usuarios WHERE id = v_auth_id) THEN
     INSERT INTO public.usuarios (id, email, nombre, rol, empresa_id, rol_empresa_id, es_superadmin, activo)
     VALUES (v_auth_id,
             'mario.ortigueira@gmail.com', 'Mario Ortigueira (admin MAZOR)', 'admin',
@@ -134,7 +172,7 @@ BEGIN
 END;
 $ad$;
 
--- =========== PLANTILLAS DE EMAIL POR DEFECTO PARA TODAS LAS EMPRESAS ===========
+-- =========== PLANTILLAS DE EMAIL POR DEFECTO ===========
 INSERT INTO public.plantillas_email (empresa_id, tipo, asunto, cuerpo_html)
 SELECT e.id, t.tipo, t.asunto, t.cuerpo_html
 FROM public.empresas e
