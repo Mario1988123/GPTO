@@ -1,3 +1,5 @@
+"use client";
+
 import { Phone, MessageCircle } from "lucide-react";
 
 /**
@@ -5,7 +7,7 @@ import { Phone, MessageCircle } from "lucide-react";
  * - Llamar (tel:)
  * - WhatsApp (wa.me/) — limpia espacios y guiones, asume +34 si solo viene un número de 9 dígitos.
  *
- * Si el teléfono no es válido, muestra solo el texto sin links.
+ * Es un client component porque usa onClick para detener la propagación dentro de filas clicables.
  */
 export function TelefonoLinks({
   telefono,

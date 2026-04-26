@@ -269,7 +269,6 @@ export default async function ClientesPage({
                           <a
                             href={`mailto:${c.email}`}
                             className="inline-flex items-center gap-1.5 hover:text-foreground hover:underline"
-                            onClick={(e) => e.stopPropagation()}
                           >
                             <Mail className="h-3 w-3" /> {c.email}
                           </a>
