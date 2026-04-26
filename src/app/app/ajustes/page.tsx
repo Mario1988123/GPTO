@@ -1,6 +1,7 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { Building2, Receipt, Ruler, Layers, FileText } from "lucide-react";
+import { Building2, Receipt, Ruler, Layers, FileText, Users, Shield, Mail, ArrowRight, User as UserIcon } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ToastFromSearchParams } from "../catalogo/shared";
@@ -27,6 +28,30 @@ export default async function AjustesPage() {
         title="Ajustes de la empresa"
         description="Estos datos aparecen en el PDF del presupuesto, el portal del cliente y la trazabilidad pública."
       />
+
+      {/* Sub-secciones */}
+      <nav className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Link href="/app/ajustes/usuarios" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition">
+          <Users className="h-5 w-5 text-blue-600" />
+          <div className="flex-1"><p className="font-bold text-sm">Usuarios</p><p className="text-xs text-muted-foreground">Invitar y gestionar accesos</p></div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+        <Link href="/app/ajustes/roles" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition">
+          <Shield className="h-5 w-5 text-amber-600" />
+          <div className="flex-1"><p className="font-bold text-sm">Roles y permisos</p><p className="text-xs text-muted-foreground">Definir qué hace cada perfil</p></div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+        <Link href="/app/ajustes/email" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition">
+          <Mail className="h-5 w-5 text-emerald-600" />
+          <div className="flex-1"><p className="font-bold text-sm">Email</p><p className="text-xs text-muted-foreground">SMTP y plantillas</p></div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+        <Link href="/app/perfil/email" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition">
+          <UserIcon className="h-5 w-5 text-violet-600" />
+          <div className="flex-1"><p className="font-bold text-sm">Mi email</p><p className="text-xs text-muted-foreground">Tu SMTP personal</p></div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
+      </nav>
 
       <form action={save} className="mt-8 space-y-6">
         <Section icon={Building2} title="Identidad y marca" desc="Cómo te presentas al cliente.">

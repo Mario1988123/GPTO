@@ -54,15 +54,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: usuario } = await supabase
     .from("usuarios")
-    .select("nombre, rol, empresa_id, empresas(nombre)")
+    .select("nombre, rol, empresa_id, es_superadmin, empresas(nombre)")
     .eq("id", user.id)
     .maybeSingle();
+
+  // Si es superadmin sin empresa, redirigir al panel de superadmin.
+  if (usuario?.es_superadmin && !usuario.empresa_id) {
+    redirect("/superadmin/empresas");
+  }
 
   // @ts-expect-error relacion
   const empresaNombre: string | null = usuario?.empresas?.nombre ?? null;
   const userNombre = usuario?.nombre ?? user.email ?? "";
   const userInicial = (userNombre || "?").charAt(0).toUpperCase();
   const rol = usuario?.rol ?? null;
+  const esSuperadmin: boolean = usuario?.es_superadmin ?? false;
 
   return (
     <div className="flex h-screen bg-slate-100">
@@ -117,7 +123,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               </div>
             </div>
           </div>
-          {rol === "admin" ? (
+          {esSuperadmin ? (
+            <Link href="/superadmin/empresas" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-br from-amber-500/20 to-red-500/20 text-amber-300 border border-amber-500/30 hover:from-amber-500/30 hover:to-red-500/30">
+              <Shield className="w-5 h-5" />
+              <span className="font-medium text-sm">Panel superadmin</span>
+            </Link>
+          ) : rol === "admin" ? (
             <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/20">
               <Shield className="w-5 h-5" />
               <span className="font-medium text-sm">Acceso admin</span>
