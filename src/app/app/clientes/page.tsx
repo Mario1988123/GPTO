@@ -38,23 +38,50 @@ export default async function ClientesPage({
   const { q = "", ver = "activos", etiqueta = "", seguimiento = "" } = await searchParams;
   const supabase = await createClient();
 
-  let query = supabase
-    .from("clientes")
-    .select("id, nombre, apellido1, apellido2, es_empresa, email, telefono, nif, etiquetas, foto_url, proximo_seguimiento, activo, created_at")
-    .order("nombre");
+  // Detección defensiva: si la migración 051 (etiquetas, foto_url, proximo_seguimiento)
+  // o la 044 (apellido1/apellido2/es_empresa) no se han aplicado, hacemos fallback al
+  // select básico para que el listado funcione igualmente.
+  function buildQuery(cols: string) {
+    let q1 = supabase.from("clientes").select(cols).order("nombre");
+    if (ver === "activos") q1 = q1.eq("activo", true);
+    if (ver === "inactivos") q1 = q1.eq("activo", false);
+    if (q) q1 = q1.ilike("nombre", `%${q}%`);
+    return q1;
+  }
 
-  if (ver === "activos") query = query.eq("activo", true);
-  if (ver === "inactivos") query = query.eq("activo", false);
-  if (q) query = query.ilike("nombre", `%${q}%`);
+  const COLS_FULL =
+    "id, nombre, apellido1, apellido2, es_empresa, email, telefono, nif, etiquetas, foto_url, proximo_seguimiento, activo, created_at";
+  const COLS_044 =
+    "id, nombre, apellido1, apellido2, es_empresa, email, telefono, nif, activo, created_at";
+  const COLS_BASIC = "id, nombre, email, telefono, nif, activo, created_at";
+
+  let query = buildQuery(COLS_FULL);
   if (etiqueta) query = query.contains("etiquetas", [etiqueta]);
   if (seguimiento === "vencido") {
     query = query.lte("proximo_seguimiento", new Date().toISOString().slice(0, 10));
   } else if (seguimiento === "proximo") {
     const en7 = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
-    query = query.gte("proximo_seguimiento", new Date().toISOString().slice(0, 10)).lte("proximo_seguimiento", en7);
+    query = query
+      .gte("proximo_seguimiento", new Date().toISOString().slice(0, 10))
+      .lte("proximo_seguimiento", en7);
   }
 
-  const { data: clientes, error } = await query;
+  let { data: clientes, error } = await query;
+  if (error && /column .* does not exist/i.test(error.message)) {
+    // Fallback 1: sin campos de la migración 051 (CRM)
+    const r2 = await buildQuery(COLS_044);
+    if (!r2.error) {
+      clientes = r2.data as unknown as typeof clientes;
+      error = null;
+    } else if (/column .* does not exist/i.test(r2.error.message)) {
+      // Fallback 2: sin campos de la migración 044 (apellidos/es_empresa)
+      const r3 = await buildQuery(COLS_BASIC);
+      clientes = (r3.data as unknown as typeof clientes) ?? null;
+      error = r3.error;
+    } else {
+      error = r2.error;
+    }
+  }
 
   // Set de etiquetas únicas (para el filtro)
   const todasEtiquetas = new Set<string>();
@@ -188,8 +215,19 @@ export default async function ClientesPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(clientes as Pick<Cliente, "id" | "nombre" | "apellido1" | "apellido2" | "es_empresa" | "email" | "telefono" | "nif" | "etiquetas" | "foto_url" | "proximo_seguimiento" | "activo" | "created_at">[]).map((c) => {
-                const nombreMostrar = nombreCompletoCliente(c);
+              {(clientes as unknown as Partial<Cliente>[]).map((raw) => {
+                const c = raw as {
+                  id: string; nombre: string; apellido1?: string | null; apellido2?: string | null;
+                  es_empresa?: boolean; email?: string | null; telefono?: string | null;
+                  nif?: string | null; etiquetas?: string[] | null; foto_url?: string | null;
+                  proximo_seguimiento?: string | null; activo: boolean;
+                };
+                const nombreMostrar = nombreCompletoCliente({
+                  nombre: c.nombre,
+                  apellido1: c.apellido1 ?? null,
+                  apellido2: c.apellido2 ?? null,
+                  es_empresa: c.es_empresa ?? false,
+                });
                 const toggle = async () => { "use server"; await alternarActivo(c.id, !c.activo); };
                 const borrar = async () => { "use server"; await eliminarCliente(c.id); };
                 const seguimientoVencido = c.proximo_seguimiento && c.proximo_seguimiento <= new Date().toISOString().slice(0, 10);
