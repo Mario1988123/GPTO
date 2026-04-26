@@ -23,7 +23,6 @@ type Tab = {
   coste_eur: number | null;
   notas: string | null;
   proveedor_id: string | null;
-  referencias_tablero: { grosor_mm: number; materiales: { nombre: string }; acabados: { nombre: string } } | null;
   almacenes: { nombre: string } | null;
   furgonetas: { nombre: string } | null;
   proveedores: { id: string; nombre: string } | null;
@@ -47,19 +46,15 @@ const MATERIALES_FALLBACK = [
 
 export default async function TablerosFisicosPage() {
   const s = await createClient();
-  const [{ data: tableros }, { data: refs }, { data: proveedores }, { data: almacenes }, { data: tiposMaterial }] = await Promise.all([
+  const [{ data: tableros }, { data: proveedores }, { data: almacenes }, { data: tiposMaterial }] = await Promise.all([
     s.from("tableros_fisicos")
       .select(`id, descripcion, material_tipo, grosor_mm, ancho_mm, alto_mm, estado, coste_eur, notas, proveedor_id,
-        referencias_tablero(grosor_mm, materiales(nombre), acabados(nombre)),
         almacenes:ubicacion_almacen_id(nombre),
         furgonetas:ubicacion_furgoneta_id(nombre),
         proveedores:proveedor_id(id, nombre)`)
       .order("estado")
       .order("created_at", { ascending: false })
       .returns<Tab[]>(),
-    s.from("referencias_tablero")
-      .select("id, grosor_mm, materiales(nombre), acabados(nombre)")
-      .eq("activo", true).order("grosor_mm"),
     s.from("proveedores").select("id, nombre").eq("activo", true).order("nombre"),
     s.from("almacenes").select("id, nombre").eq("activo", true).order("nombre"),
     s.from("tipos_material_tablero").select("slug, nombre").order("nombre"),
@@ -123,24 +118,12 @@ export default async function TablerosFisicosPage() {
             <p className="text-[10px] text-muted-foreground">Solo si no está en la lista de arriba.</p>
           </div>
 
-          <div className="space-y-1.5 sm:col-span-3">
+          <div className="space-y-1.5 sm:col-span-6">
             <Label htmlFor="almacen_id">Almacén</Label>
             <select id="almacen_id" name="almacen_id" className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
               <option value="">—</option>
               {(almacenes ?? []).map((a) => <option key={a.id as string} value={a.id as string}>{a.nombre as string}</option>)}
             </select>
-          </div>
-          <div className="space-y-1.5 sm:col-span-3">
-            <Label htmlFor="referencia_tablero_id">Ligar a referencia de catálogo (opcional)</Label>
-            <select id="referencia_tablero_id" name="referencia_tablero_id" className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm">
-              <option value="">— sin referencia —</option>
-              {(refs ?? []).map((r) => {
-                // @ts-expect-error supabase relacion
-                const m = r.materiales?.nombre ?? "?"; const a = r.acabados?.nombre ?? "?";
-                return <option key={r.id as string} value={r.id as string}>{m} · {a} · {r.grosor_mm}mm</option>;
-              })}
-            </select>
-            <p className="text-[10px] text-muted-foreground">Si tienes la SKU del catálogo, ligar permite cuadrar piezas con nesting.</p>
           </div>
 
           <div className="space-y-1.5 sm:col-span-6">
@@ -160,10 +143,8 @@ export default async function TablerosFisicosPage() {
             {tableros.map((t) => {
               const borrar = async () => { "use server"; await eliminarTableroFisico(t.id); };
               const update = async (fd: FormData) => { "use server"; await actualizarTableroFisico(t.id, fd); };
-              const desc = t.descripcion ?? (t.referencias_tablero
-                ? `${t.referencias_tablero.materiales?.nombre ?? "?"} · ${t.referencias_tablero.acabados?.nombre ?? "?"}`
-                : "Sin descripción");
-              const grosor = t.grosor_mm ?? t.referencias_tablero?.grosor_mm ?? null;
+              const desc = t.descripcion ?? "Sin descripción";
+              const grosor = t.grosor_mm ?? null;
               return (
                 <li key={t.id} className="px-4 py-3">
                   <div className="flex items-center gap-3">

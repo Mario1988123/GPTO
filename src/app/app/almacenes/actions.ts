@@ -135,7 +135,6 @@ export async function crearTableroFisico(fd: FormData) {
   }
 
   const fila = {
-    referencia_tablero_id: String(fd.get("referencia_tablero_id") ?? "").trim() || null,
     descripcion:   String(fd.get("descripcion") ?? "").trim() || null,
     material_tipo: String(fd.get("material_tipo") ?? "").trim() || null,
     grosor_mm:     Number(fd.get("grosor_mm") ?? 0) || null,
