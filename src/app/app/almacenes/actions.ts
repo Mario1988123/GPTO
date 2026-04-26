@@ -120,22 +120,65 @@ export async function registrarMovimiento(fd: FormData) {
 // ================== TABLEROS FÍSICOS ==================
 export async function crearTableroFisico(fd: FormData) {
   const s = await createClient();
-  const referencia = String(fd.get("referencia_tablero_id") ?? "").trim();
-  if (!referencia) throw new Error("Referencia obligatoria");
   const cantidad = Math.max(1, Number(fd.get("cantidad") ?? 1) || 1);
-  const filas = Array.from({ length: cantidad }, () => ({
-    referencia_tablero_id: referencia,
-    ancho_mm: Number(fd.get("ancho_mm") ?? 2440) || 2440,
-    alto_mm: Number(fd.get("alto_mm") ?? 1220) || 1220,
-    proveedor_id: String(fd.get("proveedor_id") ?? "").trim() || null,
+
+  // Si llega proveedor_nuevo (texto), créalo y úsalo.
+  let proveedor_id: string | null = String(fd.get("proveedor_id") ?? "").trim() || null;
+  const proveedor_nuevo = String(fd.get("proveedor_nuevo") ?? "").trim();
+  if (proveedor_nuevo && !proveedor_id) {
+    const { data: prov, error: errProv } = await s.from("proveedores").insert({
+      nombre: proveedor_nuevo,
+      activo: true,
+    }).select("id").single();
+    if (errProv) redirect(`/app/tableros-fisicos?error=${encodeURIComponent(errProv.message)}`);
+    proveedor_id = prov!.id as string;
+  }
+
+  const fila = {
+    referencia_tablero_id: String(fd.get("referencia_tablero_id") ?? "").trim() || null,
+    descripcion:   String(fd.get("descripcion") ?? "").trim() || null,
+    material_tipo: String(fd.get("material_tipo") ?? "").trim() || null,
+    grosor_mm:     Number(fd.get("grosor_mm") ?? 0) || null,
+    ancho_mm:      Number(fd.get("ancho_mm") ?? 2440) || 2440,
+    alto_mm:       Number(fd.get("alto_mm") ?? 1220) || 1220,
+    proveedor_id,
     ubicacion_almacen_id: String(fd.get("almacen_id") ?? "").trim() || null,
-    coste_eur: Number(fd.get("coste_eur") ?? 0) || null,
-    notas: String(fd.get("notas") ?? "").trim() || null,
-  }));
+    coste_eur:     Number(fd.get("coste_eur") ?? 0) || null,
+    notas:         String(fd.get("notas") ?? "").trim() || null,
+  };
+  const filas = Array.from({ length: cantidad }, () => ({ ...fila }));
+
   const { error } = await s.from("tableros_fisicos").insert(filas);
   if (error) redirect(`/app/tableros-fisicos?error=${encodeURIComponent(error.message)}`);
   revalidatePath("/app/tableros-fisicos");
   redirect(`/app/tableros-fisicos?ok=creados-${cantidad}`);
+}
+
+export async function actualizarTableroFisico(id: string, fd: FormData) {
+  const s = await createClient();
+  let proveedor_id: string | null = String(fd.get("proveedor_id") ?? "").trim() || null;
+  const proveedor_nuevo = String(fd.get("proveedor_nuevo") ?? "").trim();
+  if (proveedor_nuevo && !proveedor_id) {
+    const { data: prov } = await s.from("proveedores").insert({
+      nombre: proveedor_nuevo,
+      activo: true,
+    }).select("id").single();
+    proveedor_id = (prov?.id as string | undefined) ?? null;
+  }
+  const update: Record<string, unknown> = {
+    descripcion:   String(fd.get("descripcion") ?? "").trim() || null,
+    material_tipo: String(fd.get("material_tipo") ?? "").trim() || null,
+    grosor_mm:     Number(fd.get("grosor_mm") ?? 0) || null,
+    ancho_mm:      Number(fd.get("ancho_mm") ?? 0) || null,
+    alto_mm:       Number(fd.get("alto_mm") ?? 0) || null,
+    proveedor_id,
+    coste_eur:     Number(fd.get("coste_eur") ?? 0) || null,
+    notas:         String(fd.get("notas") ?? "").trim() || null,
+    estado:        String(fd.get("estado") ?? "entero"),
+  };
+  await s.from("tableros_fisicos").update(update).eq("id", id);
+  revalidatePath("/app/tableros-fisicos");
+  redirect(`/app/tableros-fisicos?ok=actualizado`);
 }
 
 export async function eliminarTableroFisico(id: string) {
