@@ -1,14 +1,43 @@
--- 058_seed_superadmin_mazor.sql
+-- 058_seed_superadmin_mazor.sql (corregida)
 -- Capa 26 — Seed: Mario superadmin (me.com) + Mario admin de MAZOR (gmail.com).
 --
--- IMPORTANTE: este seed asume que los usuarios ya existen en auth.users porque
--- Mario los creó manualmente desde Supabase Dashboard antes (o los creará).
--- Los emails y passwords los gestiona Supabase Auth aparte; aquí solo
--- conectamos la fila pública.usuarios con su rol.
+-- CORRECCIÓN: la tabla public.usuarios solo tiene id (FK a auth.users), nombre,
+-- rol, empresa_id, activo. NO tiene columna email. Esta migración:
+--  1) Añade public.usuarios.email TEXT (sincronizado desde auth.users vía trigger).
+--  2) Relaja public.usuarios.nombre para que pueda ser NULL (los seeds y las
+--     invitaciones por magic-link aún no tienen nombre cuando llegan).
+--  3) Hace los seeds de Mario superadmin + MAZOR + Mario admin gmail
+--     buscando primero el id en auth.users por email.
 --
--- Si el usuario auth todavía NO existe, este seed crea solo la fila de usuarios
--- aunque sin auth_id (NULL), y Mario debe crear el auth user después y
--- ejecutar este seed otra vez para que se enlacen.
+-- Si el usuario auth no existe todavía, esta migración no lo crea (los crea
+-- Mario manualmente desde Supabase Dashboard → Auth → Users). La migración
+-- no fallará — simplemente saltará ese paso y se podrá re-aplicar.
+
+-- =========== AMPLIAR public.usuarios ===========
+ALTER TABLE public.usuarios
+  ADD COLUMN IF NOT EXISTS email TEXT;
+
+-- nombre nullable (antes era NOT NULL)
+ALTER TABLE public.usuarios
+  ALTER COLUMN nombre DROP NOT NULL;
+
+-- Sincronizar email desde auth.users (snapshot inicial).
+UPDATE public.usuarios u
+SET email = au.email
+FROM auth.users au
+WHERE au.id = u.id AND (u.email IS NULL OR u.email <> au.email);
+
+-- Trigger: cuando cambia el email en auth.users, propagar a public.usuarios.
+CREATE OR REPLACE FUNCTION public.sync_usuario_email() RETURNS TRIGGER LANGUAGE plpgsql AS $sync$
+BEGIN
+  UPDATE public.usuarios SET email = NEW.email WHERE id = NEW.id;
+  RETURN NEW;
+END;
+$sync$;
+DROP TRIGGER IF EXISTS auth_users_sync_email ON auth.users;
+CREATE TRIGGER auth_users_sync_email
+  AFTER UPDATE OF email ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.sync_usuario_email();
 
 -- =========== MARIO SUPERADMIN (me.com) ===========
 DO $sa$
@@ -17,27 +46,25 @@ DECLARE
   v_existe  UUID;
 BEGIN
   SELECT id INTO v_auth_id FROM auth.users WHERE email = 'mario.ortigueira@me.com' LIMIT 1;
+  IF v_auth_id IS NULL THEN
+    RAISE NOTICE 'Auth user mario.ortigueira@me.com NO existe. Crea el usuario en Auth → Users y re-ejecuta esta migración.';
+    RETURN;
+  END IF;
 
-  SELECT id INTO v_existe FROM public.usuarios WHERE email = 'mario.ortigueira@me.com' LIMIT 1;
+  SELECT id INTO v_existe FROM public.usuarios WHERE id = v_auth_id LIMIT 1;
 
   IF v_existe IS NULL THEN
-    -- Crear nuevo usuario superadmin
-    INSERT INTO public.usuarios (id, email, nombre, es_superadmin, empresa_id, activo)
-    VALUES (COALESCE(v_auth_id, gen_random_uuid()), 'mario.ortigueira@me.com', 'Mario Ortigueira (superadmin)', TRUE, NULL, TRUE);
+    INSERT INTO public.usuarios (id, email, nombre, rol, es_superadmin, empresa_id, activo)
+    VALUES (v_auth_id, 'mario.ortigueira@me.com', 'Mario Ortigueira (superadmin)', 'admin', TRUE, NULL, TRUE);
   ELSE
-    -- Promocionar el existente a superadmin y soltarlo de empresa
     UPDATE public.usuarios
-    SET es_superadmin = TRUE,
-        empresa_id    = NULL,
+    SET es_superadmin  = TRUE,
+        empresa_id     = NULL,
         rol_empresa_id = NULL,
-        nombre        = COALESCE(nombre, 'Mario Ortigueira (superadmin)'),
-        activo        = TRUE
-    WHERE id = v_existe;
-
-    -- Si el auth_id ha cambiado, sincronizar
-    IF v_auth_id IS NOT NULL AND v_auth_id <> v_existe THEN
-      UPDATE public.usuarios SET id = v_auth_id WHERE id = v_existe;
-    END IF;
+        nombre         = COALESCE(nombre, 'Mario Ortigueira (superadmin)'),
+        email          = 'mario.ortigueira@me.com',
+        activo         = TRUE
+    WHERE id = v_auth_id;
   END IF;
 END;
 $sa$;
@@ -81,12 +108,18 @@ BEGIN
 
   SELECT id INTO v_rol_admin FROM public.roles_empresa WHERE empresa_id = v_emp_id AND es_admin = TRUE LIMIT 1;
   SELECT id INTO v_auth_id   FROM auth.users WHERE email = 'mario.ortigueira@gmail.com' LIMIT 1;
-  SELECT id INTO v_existe    FROM public.usuarios WHERE email = 'mario.ortigueira@gmail.com' LIMIT 1;
+
+  IF v_auth_id IS NULL THEN
+    RAISE NOTICE 'Auth user mario.ortigueira@gmail.com NO existe. Crea el usuario en Auth → Users y re-ejecuta esta migración.';
+    RETURN;
+  END IF;
+
+  SELECT id INTO v_existe FROM public.usuarios WHERE id = v_auth_id LIMIT 1;
 
   IF v_existe IS NULL THEN
-    INSERT INTO public.usuarios (id, email, nombre, empresa_id, rol_empresa_id, es_superadmin, activo)
-    VALUES (COALESCE(v_auth_id, gen_random_uuid()),
-            'mario.ortigueira@gmail.com', 'Mario Ortigueira (admin MAZOR)',
+    INSERT INTO public.usuarios (id, email, nombre, rol, empresa_id, rol_empresa_id, es_superadmin, activo)
+    VALUES (v_auth_id,
+            'mario.ortigueira@gmail.com', 'Mario Ortigueira (admin MAZOR)', 'admin',
             v_emp_id, v_rol_admin, FALSE, TRUE);
   ELSE
     UPDATE public.usuarios
@@ -94,12 +127,9 @@ BEGIN
         rol_empresa_id = v_rol_admin,
         es_superadmin  = FALSE,
         activo         = TRUE,
+        email          = 'mario.ortigueira@gmail.com',
         nombre         = COALESCE(nombre, 'Mario Ortigueira (admin MAZOR)')
-    WHERE id = v_existe;
-
-    IF v_auth_id IS NOT NULL AND v_auth_id <> v_existe THEN
-      UPDATE public.usuarios SET id = v_auth_id WHERE id = v_existe;
-    END IF;
+    WHERE id = v_auth_id;
   END IF;
 END;
 $ad$;
